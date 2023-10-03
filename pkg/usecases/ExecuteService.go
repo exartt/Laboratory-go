@@ -53,24 +53,19 @@ func deleteFile(path string) error {
 }
 
 func (es *ExecuteService) Execute() entities.ExecutionResult {
-	fmt.Printf("Here?")
 	var wg sync.WaitGroup
-	fmt.Printf("After")
 	processedFiles := make(chan string, 23)
 	memoryUsed := make(chan int64, 69)
 	idleTimes := make(chan int64, 23)
-	fmt.Printf("maybe here")
 	tempFiles, _ := es.FileService.CreateBuckets(filePath)
 	tempFilesChan := make(chan string, len(tempFiles))
 	for _, path := range tempFiles {
 		tempFilesChan <- path
 	}
-	fmt.Printf("populating the channel?")
 
 	startTime := time.Now()
 
 	for i := 0; i < UsedThread; i++ {
-		fmt.Printf("maybe starting goroutines?")
 		wg.Add(1)
 		go processFile(&wg, tempFilesChan, processedFiles, memoryUsed, idleTimes, es)
 	}
@@ -78,7 +73,6 @@ func (es *ExecuteService) Execute() entities.ExecutionResult {
 	wg.Wait()
 
 	executionTime := time.Since(startTime).Milliseconds()
-	fmt.Printf("all wrong.??")
 	close(processedFiles)
 	close(memoryUsed)
 	close(tempFilesChan)
@@ -99,8 +93,8 @@ func (es *ExecuteService) Execute() entities.ExecutionResult {
 
 func processFile(wg *sync.WaitGroup, tempFiles chan string, processedFiles chan string, memoryUsed chan int64, idleTimes chan int64, es *ExecuteService) {
 	defer wg.Done()
-	fmt.Printf("inside the processFile func??")
 	for tempFile := range tempFiles {
+		fmt.Printf("loops?", tempFile)
 		goroutineStartTime := time.Now()
 		initialMemory := getMemoryNow()
 
