@@ -100,13 +100,11 @@ func processFile(wg *sync.WaitGroup, tempFiles chan string, processedFiles chan 
 		goroutineStartTime := time.Now()
 		initialMemory := getMemoryNow()
 
-		readTime := time.Now()
 		professionalSalaries, err := es.FileService.Read(tempFile)
 		if err != nil {
 			log.Print("deu ruim ", err)
 			continue
 		}
-		print("\nRead ", readTime.Sub(time.Now()).Milliseconds())
 
 		memoryUsed <- getUsedMemory(initialMemory)
 
@@ -118,23 +116,19 @@ func processFile(wg *sync.WaitGroup, tempFiles chan string, processedFiles chan 
 		}
 
 		memoryUsed <- getUsedMemory(initialMemory)
-		readTime = time.Now()
 		result, err := es.FileService.Write(professionalSalaries)
 		if err != nil {
 			log.Print("deu ruim ", err)
 			continue
 		}
-		log.Print("\nWrite ", readTime.Sub(time.Now()).Milliseconds())
 		processedFiles <- result
 		memoryUsed <- getUsedMemory(initialMemory)
 
-		readTime = time.Now()
 		err = deleteFile(tempFile)
 		if err != nil {
 			log.Print("deu ruim ", err)
 			continue
 		}
-		log.Print("\n DEl ", readTime.Sub(time.Now()).Milliseconds())
 
 		goroutineEndTime := time.Now()
 		idleTime := goroutineEndTime.Sub(goroutineStartTime).Milliseconds()
