@@ -14,7 +14,6 @@ var sequentialExecutionTime float64 = 0
 func GetMedianMemory(memoryUsedList chan int64) int64 {
 	var ret = big.NewInt(0)
 	size := int64(len(memoryUsedList))
-
 	for memUsed := range memoryUsedList {
 		ret.Add(ret, big.NewInt(memUsed))
 	}
@@ -87,7 +86,6 @@ func ExecuteAndCollectData(executeService *usecases.ExecuteService, threadType s
 		fmt.Printf("Initiating %s capture number: %d\n", threadType, i)
 
 		currentTimeMillis := time.Now().UnixNano() / int64(time.Millisecond)
-		fmt.Printf("Where do i die?")
 		result := executeService.Execute()
 
 		memoryResult := GetMedianMemory(result.MemoryUsed)

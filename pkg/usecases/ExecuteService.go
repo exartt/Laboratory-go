@@ -15,7 +15,7 @@ import (
 var UsedThread = 1
 
 const (
-	filePath = "resources/Software_Professional_Salaries.csv"
+	filePath = "/home/opc/Laboratory-go/resources/Software_Professional_Salaries.csv"
 )
 
 type IExecuteService interface {
@@ -53,7 +53,6 @@ func deleteFile(path string) error {
 }
 
 func (es *ExecuteService) Execute() entities.ExecutionResult {
-	log.Printf("1")
 	var wg sync.WaitGroup
 	processedFiles := make(chan string, 23)
 	memoryUsed := make(chan int64, 69)
@@ -63,13 +62,11 @@ func (es *ExecuteService) Execute() entities.ExecutionResult {
 	for _, path := range tempFiles {
 		tempFilesChan <- path
 	}
+	close(tempFilesChan)
 
 	startTime := time.Now()
-	log.Printf("2")
 	for i := 0; i < UsedThread; i++ {
-		log.Printf("3")
 		wg.Add(1)
-		log.Printf("4")
 		go processFile(&wg, tempFilesChan, processedFiles, memoryUsed, idleTimes, es)
 	}
 
@@ -78,7 +75,7 @@ func (es *ExecuteService) Execute() entities.ExecutionResult {
 	executionTime := time.Since(startTime).Milliseconds()
 	close(processedFiles)
 	close(memoryUsed)
-	close(tempFilesChan)
+	close(idleTimes)
 
 	for path := range processedFiles {
 		err := deleteFile(path)
@@ -95,22 +92,17 @@ func (es *ExecuteService) Execute() entities.ExecutionResult {
 }
 
 func processFile(wg *sync.WaitGroup, tempFiles chan string, processedFiles chan string, memoryUsed chan int64, idleTimes chan int64, es *ExecuteService) {
-	log.Printf("5")
 	defer wg.Done()
-	log.Printf("6")
 	for tempFile := range tempFiles {
-		log.Printf("7")
 		fmt.Printf("loops?", tempFile)
 		goroutineStartTime := time.Now()
 		initialMemory := getMemoryNow()
-		log.Printf("8")
 		professionalSalaries, err := es.FileService.Read(tempFile)
 		if err != nil {
 			log.Print("deu ruim ", err)
 			continue
 		}
 
-		log.Printf("9")
 		memoryUsed <- getUsedMemory(initialMemory)
 
 		for _, professionalSalary := range professionalSalaries {
@@ -119,7 +111,6 @@ func processFile(wg *sync.WaitGroup, tempFiles chan string, processedFiles chan 
 			professionalSalary.JobTitle = strconv.Itoa(titleHash)
 			professionalSalary.Location = strconv.Itoa(locationHash)
 		}
-		log.Printf("10")
 		memoryUsed <- getUsedMemory(initialMemory)
 		result, err := es.FileService.Write(professionalSalaries)
 		if err != nil {
@@ -128,20 +119,16 @@ func processFile(wg *sync.WaitGroup, tempFiles chan string, processedFiles chan 
 		}
 		processedFiles <- result
 		memoryUsed <- getUsedMemory(initialMemory)
-		log.Printf("11")
 		err = deleteFile(tempFile)
 		if err != nil {
 			log.Print("deu ruim ", err)
 			continue
 		}
-		log.Printf("12")
 		goroutineEndTime := time.Now()
 		idleTime := goroutineEndTime.Sub(goroutineStartTime).Milliseconds()
-		log.Printf("13")
 		idleTimes <- idleTime
 		if len(tempFiles) == 0 {
 			return
 		}
-		fmt.Printf("later????")
 	}
 }
