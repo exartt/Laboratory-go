@@ -1,7 +1,7 @@
 package entities
 
 type ExecutionResult struct {
-	MemoryUsed    []int64
-	IdleTimes     []int64
+	MemoryUsed    chan int64
+	IdleTimes     chan int64
 	ExecutionTime int64
 }

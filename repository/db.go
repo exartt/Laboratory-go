@@ -10,8 +10,8 @@ const (
 	DBHost     = "localhost"
 	DBPort     = 5432
 	DBUser     = "postgres"
-	DBName     = "Laboratory"
-	DBPassword = "L30m0r43s//"
+	DBName     = "postgres"
+	DBPassword = ""
 )
 
 func Connect() *sql.DB {

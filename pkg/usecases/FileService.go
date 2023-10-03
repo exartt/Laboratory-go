@@ -5,7 +5,6 @@ import (
 	"bufio"
 	"encoding/csv"
 	"fmt"
-	"io"
 	"log"
 	"os"
 	"strconv"
@@ -35,12 +34,7 @@ func (m *FileService) CreateBuckets(pathFile string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer func(file *os.File) {
-		err := file.Close()
-		if err != nil {
-			log.Fatal(err)
-		}
-	}(file)
+	defer file.Close()
 
 	scanner := bufio.NewScanner(file)
 	var allLines []string
@@ -57,7 +51,7 @@ func (m *FileService) CreateBuckets(pathFile string) ([]string, error) {
 
 		currentTimeMillis := time.Now().UnixNano() / int64(time.Millisecond)
 		tempDir := os.TempDir()
-		tempFile, err := os.CreateTemp(tempDir, "bucket_*"+strconv.FormatInt(currentTimeMillis+(int64(i)/int64(MaxRows)), 10)+".csv")
+		tempFile, err := os.CreateTemp(tempDir, "bucket_*"+strconv.FormatInt(currentTimeMillis+((int64(i)/int64(MaxRows))+int64(i+MaxRows)), 10)+".csv")
 		if err != nil {
 			return nil, err
 		}
@@ -66,12 +60,19 @@ func (m *FileService) CreateBuckets(pathFile string) ([]string, error) {
 		for _, line := range partition {
 			_, err := fmt.Fprintln(writer, line)
 			if err != nil {
+				tempFile.Close()
 				return nil, err
 			}
 		}
 		err = writer.Flush()
 		if err != nil {
+			tempFile.Close()
 			return nil, err
+		}
+
+		err = tempFile.Close()
+		if err != nil {
+			log.Printf("Failed to close temp file: %v", err)
 		}
 
 		tempFiles = append(tempFiles, tempFile.Name())
@@ -80,50 +81,62 @@ func (m *FileService) CreateBuckets(pathFile string) ([]string, error) {
 	return tempFiles, nil
 }
 
-func (m *FileService) Read(partFilePath string) ([]entities.ProfessionalSalary, error) {
-	file, err := os.Open(partFilePath)
+func (m *FileService) Read(filePath string) ([]entities.ProfessionalSalary, error) {
+	var professionalSalaryList []entities.ProfessionalSalary
+
+	file, err := os.Open(filePath)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("could not open file: %v", err)
 	}
-	defer func(file *os.File) {
+	defer func() {
 		err := file.Close()
 		if err != nil {
-
+			log.Printf("Failed to close file during reading: %v", err)
 		}
-	}(file)
+	}()
 
-	var professionalSalaries []entities.ProfessionalSalary
 	reader := csv.NewReader(file)
-	_, err = reader.Read()
-	if err != nil {
-		return nil, err
-	}
+	reader.Read()
 
 	for {
-		record, err := reader.Read()
-		if err == io.EOF {
+		line, err := reader.Read()
+		if err != nil {
 			break
 		}
+
+		rating, err := strconv.ParseFloat(line[0], 64)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("could not parse rating: %v", err)
 		}
 
-		rating, _ := strconv.ParseFloat(record[0], 64)
-		salary, _ := strconv.ParseFloat(record[3], 64)
-		reports, _ := strconv.Atoi(record[4])
+		companyName := line[1]
+		jobTitle := line[2]
+
+		salary, err := strconv.ParseFloat(line[3], 64)
+		if err != nil {
+			return nil, fmt.Errorf("could not parse salary: %v", err)
+		}
+
+		reports, err := strconv.Atoi(line[4])
+		if err != nil {
+			return nil, fmt.Errorf("could not parse reports: %v", err)
+		}
+
+		location := line[5]
 
 		professionalSalary := entities.ProfessionalSalary{
 			Rating:      rating,
-			CompanyName: record[1],
-			JobTitle:    record[2],
+			CompanyName: companyName,
+			JobTitle:    jobTitle,
 			Salary:      salary,
 			Reports:     reports,
-			Location:    record[5],
+			Location:    location,
 		}
 
-		professionalSalaries = append(professionalSalaries, professionalSalary)
+		professionalSalaryList = append(professionalSalaryList, professionalSalary)
 	}
-	return professionalSalaries, nil
+
+	return professionalSalaryList, nil
 }
 
 func (m *FileService) Write(professionalSalaries []entities.ProfessionalSalary) (string, error) {
@@ -131,12 +144,12 @@ func (m *FileService) Write(professionalSalaries []entities.ProfessionalSalary) 
 	if err != nil {
 		return "", err
 	}
-	defer func(tempFile *os.File) {
+	defer func() {
 		err := tempFile.Close()
 		if err != nil {
-			log.Fatal(err)
+			log.Printf("Failed to close temp file during writing: %v", err)
 		}
-	}(tempFile)
+	}()
 
 	writer := bufio.NewWriter(tempFile)
 	_, err = writer.WriteString("Rating,CompanyName,JobTitle,Salary,Reports,Location\n")

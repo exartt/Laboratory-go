@@ -9,7 +9,7 @@ func main() {
 	fileService := usecases.NewFileService()
 	mappingService := usecases.NewMappingService()
 	executeService := usecases.NewExecuteService(fileService, mappingService)
-	const repeatProcess = 10
+	const repeatProcess = 5
 
 	utils.ExecuteAndCollectData(executeService, "singleThread", repeatProcess)
 

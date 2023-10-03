@@ -11,16 +11,15 @@ import (
 
 var sequentialExecutionTime float64 = 0
 
-func GetMedianMemory(memoryUsedList []int64) int64 {
+func GetMedianMemory(memoryUsedList chan int64) int64 {
 	var ret = big.NewInt(0)
+	size := int64(len(memoryUsedList))
 
-	for _, memUsed := range memoryUsedList {
+	for memUsed := range memoryUsedList {
 		ret.Add(ret, big.NewInt(memUsed))
 	}
 
-	size := big.NewInt(int64(len(memoryUsedList)))
-
-	ret.Div(ret, size)
+	ret.Div(ret, big.NewInt(size))
 
 	return ret.Int64()
 }
@@ -38,7 +37,7 @@ func PersistData(executionTime, memoryUsedMedian, idleThreadTimeMedian int64, is
 		overHead := GetOverhead(executionTime)
 		dataCollected.Speedup = speedUp
 		dataCollected.Efficiency = efficiency
-		dataCollected.OverHead = float64(overHead)
+		dataCollected.OverHead = overHead
 	}
 	dataCollected.FullExecutionTime = fullExecutionTime
 	dataCollected.IdleThreadTimeMedian = idleThreadTimeMedian
@@ -58,13 +57,17 @@ func GetOverhead(parallelExecutionTime int64) int64 {
 	return int64(sequentialExecutionTime) - parallelExecutionTime
 }
 
-func CalculateAverageIdleTimeInMilliseconds(idleTimes []int64) int64 {
+func CalculateAverageIdleTimeInMilliseconds(idleTimes chan int64) int64 {
 	var totalIdleTime int64 = 0
-	for _, idleTime := range idleTimes {
+	size := int64(len(idleTimes))
+	for idleTime := range idleTimes {
 		totalIdleTime += idleTime
+		if len(idleTimes) == 0 {
+			break
+		}
 	}
 
-	return totalIdleTime / int64(len(idleTimes))
+	return totalIdleTime / size
 }
 
 func SetSequentialExecutionTime() {
