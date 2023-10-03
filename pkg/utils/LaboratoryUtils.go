@@ -87,6 +87,7 @@ func ExecuteAndCollectData(executeService *usecases.ExecuteService, threadType s
 		fmt.Printf("Initiating %s capture number: %d\n", threadType, i)
 
 		currentTimeMillis := time.Now().UnixNano() / int64(time.Millisecond)
+		fmt.Printf("Where do i die?")
 		result := executeService.Execute()
 
 		memoryResult := GetMedianMemory(result.MemoryUsed)
