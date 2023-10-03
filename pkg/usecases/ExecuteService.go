@@ -3,7 +3,6 @@ package usecases
 import (
 	"Laboratory-go/pkg/entities"
 	"Laboratory-go/pkg/usecases/enum"
-	"fmt"
 	"log"
 	"os"
 	"runtime"
@@ -94,7 +93,6 @@ func (es *ExecuteService) Execute() entities.ExecutionResult {
 func processFile(wg *sync.WaitGroup, tempFiles chan string, processedFiles chan string, memoryUsed chan int64, idleTimes chan int64, es *ExecuteService) {
 	defer wg.Done()
 	for tempFile := range tempFiles {
-		fmt.Printf("loops?", tempFile)
 		goroutineStartTime := time.Now()
 		initialMemory := getMemoryNow()
 		professionalSalaries, err := es.FileService.Read(tempFile)
