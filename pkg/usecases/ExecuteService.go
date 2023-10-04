@@ -103,11 +103,11 @@ func processFile(wg *sync.WaitGroup, tempFiles chan string, processedFiles chan 
 
 		memoryUsed <- getUsedMemory(initialMemory)
 
-		for _, professionalSalary := range professionalSalaries {
-			titleHash, _ := es.MappingService.GetHash(professionalSalary.JobTitle, enum.TITLE)
-			locationHash, _ := es.MappingService.GetHash(professionalSalary.Location, enum.LOCATION)
-			professionalSalary.JobTitle = strconv.Itoa(titleHash)
-			professionalSalary.Location = strconv.Itoa(locationHash)
+		for i := range professionalSalaries {
+			titleHash, _ := es.MappingService.GetHash(professionalSalaries[i].JobTitle, enum.TITLE)
+			locationHash, _ := es.MappingService.GetHash(professionalSalaries[i].Location, enum.LOCATION)
+			professionalSalaries[i].JobTitle = strconv.Itoa(titleHash)
+			professionalSalaries[i].Location = strconv.Itoa(locationHash)
 		}
 		memoryUsed <- getUsedMemory(initialMemory)
 		result, err := es.FileService.Write(professionalSalaries)

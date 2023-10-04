@@ -8,6 +8,7 @@ import (
 	"log"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -82,7 +83,7 @@ func (m *FileService) CreateBuckets(pathFile string) ([]string, error) {
 }
 
 func (m *FileService) Read(filePath string) ([]entities.ProfessionalSalary, error) {
-	var professionalSalaryList []entities.ProfessionalSalary
+	professionalSalaryList := make([]entities.ProfessionalSalary, 0, 1000)
 
 	file, err := os.Open(filePath)
 	if err != nil {
@@ -144,35 +145,31 @@ func (m *FileService) Write(professionalSalaries []entities.ProfessionalSalary) 
 	if err != nil {
 		return "", err
 	}
-	defer func() {
-		err := tempFile.Close()
-		if err != nil {
-			log.Printf("Failed to close temp file during writing: %v", err)
-		}
-	}()
+	defer tempFile.Close()
 
 	writer := bufio.NewWriter(tempFile)
-	_, err = writer.WriteString("Rating,CompanyName,JobTitle,Salary,Reports,Location\n")
+	_, err = writer.WriteString("Rating;CompanyName;JobTitle;Salary;Reports;Location\n")
 	if err != nil {
 		return "", err
 	}
 
+	var builder strings.Builder
 	for _, salary := range professionalSalaries {
-		line := fmt.Sprintf("%f,%s,%s,%f,%d,%s\n",
+		fmt.Fprintf(&builder, "%f;%s;%s;%f;%d;%s\n",
 			salary.Rating,
 			salary.CompanyName,
 			salary.JobTitle,
 			salary.Salary,
 			salary.Reports,
 			salary.Location)
-		_, err := writer.WriteString(line)
-		if err != nil {
-			return "", err
-		}
 	}
 
-	err = writer.Flush()
+	_, err = writer.WriteString(builder.String())
 	if err != nil {
+		return "", err
+	}
+
+	if err = writer.Flush(); err != nil {
 		return "", err
 	}
 
