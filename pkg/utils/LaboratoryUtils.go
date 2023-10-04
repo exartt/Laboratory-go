@@ -23,11 +23,13 @@ func GetMedianMemory(memoryUsedList chan int64) int64 {
 	return ret.Int64()
 }
 
-func PersistData(executionTime, memoryUsedMedian, idleThreadTimeMedian int64, isSingleThread bool, fullExecutionTime int64) {
+func PersistData(executionTime, memoryUsedMedian, memoryUsedMedianR, memoryUsedMedianW, idleThreadTimeMedian int64, isSingleThread bool, fullExecutionTime int64) {
 	dataCollected := entities.DataCollected{}
 
 	dataCollected.ExecutionTime = executionTime
 	dataCollected.Memory = memoryUsedMedian
+	dataCollected.MemoryR = memoryUsedMedianR
+	dataCollected.MemoryW = memoryUsedMedianW
 	dataCollected.IsSingleThread = isSingleThread
 
 	if !isSingleThread {
@@ -89,10 +91,12 @@ func ExecuteAndCollectData(executeService *usecases.ExecuteService, threadType s
 		result := executeService.Execute()
 
 		memoryResult := GetMedianMemory(result.MemoryUsed)
+		memoryResultR := GetMedianMemory(result.MemoryUsedR)
+		memoryResultW := GetMedianMemory(result.MemoryUsedW)
 		idleThreadTime := CalculateAverageIdleTimeInMilliseconds(result.IdleTimes)
 		timeSpent := (time.Now().UnixNano() / int64(time.Millisecond)) - currentTimeMillis
 
-		PersistData(result.ExecutionTime, memoryResult, idleThreadTime, threadType == "singleThread", timeSpent)
+		PersistData(result.ExecutionTime, memoryResult, memoryResultR, memoryResultW, idleThreadTime, threadType == "singleThread", timeSpent)
 
 		fmt.Printf("capture %s nº %d collected successfully\n", threadType, i)
 	}

@@ -55,6 +55,8 @@ func (es *ExecuteService) Execute() entities.ExecutionResult {
 	var wg sync.WaitGroup
 	processedFiles := make(chan string, 23)
 	memoryUsed := make(chan int64, 69)
+	memoryUsedR := make(chan int64, 23)
+	memoryUsedW := make(chan int64, 23)
 	idleTimes := make(chan int64, 23)
 	tempFiles, _ := es.FileService.CreateBuckets(filePath)
 	tempFilesChan := make(chan string, len(tempFiles))
@@ -66,7 +68,7 @@ func (es *ExecuteService) Execute() entities.ExecutionResult {
 	startTime := time.Now()
 	for i := 0; i < UsedThread; i++ {
 		wg.Add(1)
-		go processFile(&wg, tempFilesChan, processedFiles, memoryUsed, idleTimes, es)
+		go processFile(&wg, tempFilesChan, processedFiles, memoryUsed, memoryUsedR, memoryUsedW, idleTimes, es)
 	}
 
 	wg.Wait()
@@ -87,10 +89,12 @@ func (es *ExecuteService) Execute() entities.ExecutionResult {
 		MemoryUsed:    memoryUsed,
 		IdleTimes:     idleTimes,
 		ExecutionTime: executionTime,
+		MemoryUsedR:   memoryUsedR,
+		MemoryUsedW:   memoryUsedW,
 	}
 }
 
-func processFile(wg *sync.WaitGroup, tempFiles chan string, processedFiles chan string, memoryUsed chan int64, idleTimes chan int64, es *ExecuteService) {
+func processFile(wg *sync.WaitGroup, tempFiles chan string, processedFiles chan string, memoryUsed chan int64, memoryUsedR chan int64, memoryUsedW chan int64, idleTimes chan int64, es *ExecuteService) {
 	defer wg.Done()
 	for tempFile := range tempFiles {
 		goroutineStartTime := time.Now()
@@ -101,7 +105,7 @@ func processFile(wg *sync.WaitGroup, tempFiles chan string, processedFiles chan 
 			continue
 		}
 
-		memoryUsed <- getUsedMemory(initialMemory)
+		memoryUsedR <- getUsedMemory(initialMemory)
 
 		for i := range professionalSalaries {
 			titleHash, _ := es.MappingService.GetHash(professionalSalaries[i].JobTitle, enum.TITLE)
@@ -110,12 +114,14 @@ func processFile(wg *sync.WaitGroup, tempFiles chan string, processedFiles chan 
 			professionalSalaries[i].Location = strconv.Itoa(locationHash)
 		}
 		memoryUsed <- getUsedMemory(initialMemory)
+		beforeMemoryRead := getMemoryNow()
 		result, err := es.FileService.Write(professionalSalaries)
 		if err != nil {
 			log.Print("deu ruim ", err)
 			continue
 		}
 		processedFiles <- result
+		memoryUsedW <- getUsedMemory(beforeMemoryRead)
 		memoryUsed <- getUsedMemory(initialMemory)
 		err = deleteFile(tempFile)
 		if err != nil {

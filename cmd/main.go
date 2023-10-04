@@ -8,14 +8,19 @@ import (
 func main() {
 	fileService := usecases.NewFileService()
 	mappingService := usecases.NewMappingService()
-	executeService := usecases.NewExecuteService(fileService, mappingService)
-	const repeatProcess = 100000
+	const repeatProcess = 1
 
-	utils.ExecuteAndCollectData(executeService, "singleThread", repeatProcess)
+	for numThreads := 1; numThreads <= 10; numThreads++ {
+		typeThread := "singleThread"
+		if numThreads > 1 {
+			utils.SetSequentialExecutionTime()
+			typeThread = "multiThread"
+		}
 
-	utils.SetSequentialExecutionTime()
-	utils.SetUsedThread(10)
-	utils.PersistDataUsed()
+		utils.SetUsedThread(numThreads)
+		utils.PersistDataUsed()
+		executeService := usecases.NewExecuteService(fileService, mappingService)
 
-	utils.ExecuteAndCollectData(executeService, "multiThread", repeatProcess)
+		utils.ExecuteAndCollectData(executeService, typeThread, repeatProcess)
+	}
 }
