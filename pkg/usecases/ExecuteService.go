@@ -15,6 +15,7 @@ var UsedThread = 1
 
 const (
 	filePath = "/home/opc/Laboratory-go/resources/Software_Professional_Salaries.csv"
+	//filePath = "C:\\Users\\leo_m\\GolandProjects\\Laboratory-go\\resources\\Software_Professional_Salaries.csv"
 )
 
 type IExecuteService interface {
@@ -77,6 +78,8 @@ func (es *ExecuteService) Execute() entities.ExecutionResult {
 	close(processedFiles)
 	close(memoryUsed)
 	close(idleTimes)
+	close(memoryUsedW)
+	close(memoryUsedR)
 
 	for path := range processedFiles {
 		err := deleteFile(path)

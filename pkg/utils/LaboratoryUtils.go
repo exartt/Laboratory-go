@@ -23,6 +23,25 @@ func GetMedianMemory(memoryUsedList chan int64) int64 {
 	return ret.Int64()
 }
 
+func GetMedianMemoryTotal(memoryUsedList chan int64, sizeR int, sumR int64) int64 {
+	ret := big.NewInt(0)
+	size := big.NewInt(0)
+	for memUsed := range memoryUsedList {
+		ret.Add(ret, big.NewInt(memUsed))
+		size.Add(size, big.NewInt(1))
+	}
+	ret.Add(ret, big.NewInt(sumR))
+	size.Add(size, big.NewInt(int64(sizeR)))
+
+	if size.Int64() == 0 {
+		return 0
+	}
+
+	ret.Div(ret, size)
+
+	return ret.Int64()
+}
+
 func PersistData(executionTime, memoryUsedMedian, memoryUsedMedianR, memoryUsedMedianW, idleThreadTimeMedian int64, isSingleThread bool, fullExecutionTime int64) {
 	dataCollected := entities.DataCollected{}
 
@@ -90,8 +109,11 @@ func ExecuteAndCollectData(executeService *usecases.ExecuteService, threadType s
 		currentTimeMillis := time.Now().UnixNano() / int64(time.Millisecond)
 		result := executeService.Execute()
 
-		memoryResult := GetMedianMemory(result.MemoryUsed)
-		memoryResultR := GetMedianMemory(result.MemoryUsedR)
+		sizeR := len(result.MemoryUsedR)
+		sumR := sumAll(result.MemoryUsedR)
+
+		memoryResult := GetMedianMemoryTotal(result.MemoryUsed, sizeR, sumR)
+		memoryResultR := sumR / int64(sizeR)
 		memoryResultW := GetMedianMemory(result.MemoryUsedW)
 		idleThreadTime := CalculateAverageIdleTimeInMilliseconds(result.IdleTimes)
 		timeSpent := (time.Now().UnixNano() / int64(time.Millisecond)) - currentTimeMillis
@@ -100,4 +122,12 @@ func ExecuteAndCollectData(executeService *usecases.ExecuteService, threadType s
 
 		fmt.Printf("capture %s nº %d collected successfully\n", threadType, i)
 	}
+}
+
+func sumAll(memoryR chan int64) int64 {
+	var ret = big.NewInt(0)
+	for memR := range memoryR {
+		ret.Add(ret, big.NewInt(memR))
+	}
+	return ret.Int64()
 }
