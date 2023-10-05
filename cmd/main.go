@@ -8,9 +8,9 @@ import (
 func main() {
 	fileService := usecases.NewFileService()
 	mappingService := usecases.NewMappingService()
-	const repeatProcess = 10000
+	const repeatProcess = 10
 
-	for numGoRoutines := 10; numGoRoutines <= 10; numGoRoutines++ {
+	for numGoRoutines := 1; numGoRoutines <= 10; numGoRoutines++ {
 		typeThread := "singleThread"
 		if numGoRoutines > 1 {
 			utils.SetSequentialExecutionTime()

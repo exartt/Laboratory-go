@@ -19,16 +19,16 @@ func NewMappingService() *MappingService {
 }
 
 func (m *MappingService) GetHash(key string, hashType string) (int, error) {
-	m.mu.RLock()
+	//m.mu.RLock()
 	targetMap, exists := m.maps[hashType]
 	val, ok := targetMap[key]
-	m.mu.RUnlock()
+	//m.mu.RUnlock()
 	if exists && ok {
 		return val, nil
 	}
 
-	m.mu.Lock()
-	defer m.mu.Unlock()
+	//m.mu.Lock()
+	//defer m.mu.Unlock()
 
 	targetMap, exists = m.maps[hashType]
 	if !exists {
