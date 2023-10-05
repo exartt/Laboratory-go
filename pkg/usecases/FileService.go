@@ -5,10 +5,10 @@ import (
 	"bufio"
 	"encoding/csv"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"strconv"
-	"strings"
 	"time"
 )
 
@@ -96,13 +96,21 @@ func (m *FileService) Read(filePath string) ([]entities.ProfessionalSalary, erro
 		}
 	}()
 
-	reader := csv.NewReader(file)
-	reader.Read()
+	bufferedReader := bufio.NewReader(file)
+	reader := csv.NewReader(bufferedReader)
+
+	_, err = reader.Read()
+	if err != nil {
+		return nil, fmt.Errorf("error reading header: %v", err)
+	}
 
 	for {
 		line, err := reader.Read()
 		if err != nil {
-			break
+			if err == io.EOF {
+				break
+			}
+			return nil, fmt.Errorf("error reading line: %v", err)
 		}
 
 		rating, err := strconv.ParseFloat(line[0], 64)
@@ -140,6 +148,100 @@ func (m *FileService) Read(filePath string) ([]entities.ProfessionalSalary, erro
 	return professionalSalaryList, nil
 }
 
+//func (m *FileService) Read(filePath string) ([]entities.ProfessionalSalary, error) {
+//	professionalSalaryList := make([]entities.ProfessionalSalary, 0, 1000)
+//
+//	file, err := os.Open(filePath)
+//	if err != nil {
+//		return nil, fmt.Errorf("could not open file: %v", err)
+//	}
+//	defer func() {
+//		err := file.Close()
+//		if err != nil {
+//			log.Printf("Failed to close file during reading: %v", err)
+//		}
+//	}()
+//
+//	reader := csv.NewReader(file)
+//	reader.Read()
+//
+//	for {
+//		line, err := reader.Read()
+//		if err != nil {
+//			break
+//		}
+//
+//		rating, err := strconv.ParseFloat(line[0], 64)
+//		if err != nil {
+//			return nil, fmt.Errorf("could not parse rating: %v", err)
+//		}
+//
+//		companyName := line[1]
+//		jobTitle := line[2]
+//
+//		salary, err := strconv.ParseFloat(line[3], 64)
+//		if err != nil {
+//			return nil, fmt.Errorf("could not parse salary: %v", err)
+//		}
+//
+//		reports, err := strconv.Atoi(line[4])
+//		if err != nil {
+//			return nil, fmt.Errorf("could not parse reports: %v", err)
+//		}
+//
+//		location := line[5]
+//
+//		professionalSalary := entities.ProfessionalSalary{
+//			Rating:      rating,
+//			CompanyName: companyName,
+//			JobTitle:    jobTitle,
+//			Salary:      salary,
+//			Reports:     reports,
+//			Location:    location,
+//		}
+//
+//		professionalSalaryList = append(professionalSalaryList, professionalSalary)
+//	}
+//
+//	return professionalSalaryList, nil
+//}
+
+//func (m *FileService) Write(professionalSalaries []entities.ProfessionalSalary) (string, error) {
+//	tempFile, err := os.CreateTemp("", "bucket_result_*.csv")
+//	if err != nil {
+//		return "", err
+//	}
+//	defer tempFile.Close()
+//
+//	writer := bufio.NewWriter(tempFile)
+//	_, err = writer.WriteString("Rating;CompanyName;JobTitle;Salary;Reports;Location\n")
+//	if err != nil {
+//		return "", err
+//	}
+//
+//	var builder strings.Builder
+//	for _, salary := range professionalSalaries {
+//		fmt.Fprintf(&builder, "%f;%s;%s;%f;%d;%s\n",
+//			salary.Rating,
+//			salary.CompanyName,
+//			salary.JobTitle,
+//			salary.Salary,
+//			salary.Reports,
+//			salary.Location)
+//	}
+//
+//	_, err = writer.WriteString(builder.String())
+//	if err != nil {
+//		return "", err
+//	}
+//
+//	if err = writer.Flush(); err != nil {
+//		return "", err
+//	}
+//
+//	return tempFile.Name(), nil
+//}
+
 func (m *FileService) Write(professionalSalaries []entities.ProfessionalSalary) (string, error) {
 	tempFile, err := os.CreateTemp("", "bucket_result_*.csv")
 	if err != nil {
@@ -148,25 +250,23 @@ func (m *FileService) Write(professionalSalaries []entities.ProfessionalSalary) 
 	defer tempFile.Close()
 
 	writer := bufio.NewWriter(tempFile)
+
 	_, err = writer.WriteString("Rating;CompanyName;JobTitle;Salary;Reports;Location\n")
 	if err != nil {
 		return "", err
 	}
 
-	var builder strings.Builder
 	for _, salary := range professionalSalaries {
-		fmt.Fprintf(&builder, "%f;%s;%s;%f;%d;%s\n",
+		_, err = fmt.Fprintf(writer, "%f;%s;%s;%f;%d;%s\n",
 			salary.Rating,
 			salary.CompanyName,
 			salary.JobTitle,
 			salary.Salary,
 			salary.Reports,
 			salary.Location)
-	}
-
-	_, err = writer.WriteString(builder.String())
-	if err != nil {
-		return "", err
+		if err != nil {
+			return "", err
+		}
 	}
 
 	if err = writer.Flush(); err != nil {
