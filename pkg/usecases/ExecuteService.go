@@ -54,13 +54,15 @@ func deleteFile(path string) error {
 
 func (es *ExecuteService) Execute() entities.ExecutionResult {
 	var wg sync.WaitGroup
+	tempFiles, _ := es.FileService.CreateBuckets(filePath)
+	ioSem := make(chan struct{}, UsedThread)
 	processedFiles := make(chan string, 23)
 	memoryUsed := make(chan int64, 69)
 	memoryUsedR := make(chan int64, 23)
 	memoryUsedW := make(chan int64, 23)
 	idleTimes := make(chan int64, 23)
-	tempFiles, _ := es.FileService.CreateBuckets(filePath)
 	tempFilesChan := make(chan string, len(tempFiles))
+
 	for _, path := range tempFiles {
 		tempFilesChan <- path
 	}
@@ -69,17 +71,18 @@ func (es *ExecuteService) Execute() entities.ExecutionResult {
 	startTime := time.Now()
 	for i := 0; i < UsedThread; i++ {
 		wg.Add(1)
-		go processFile(&wg, tempFilesChan, processedFiles, memoryUsed, memoryUsedR, memoryUsedW, idleTimes, es)
+		go es.worker(&wg, tempFilesChan, ioSem, processedFiles, memoryUsed, memoryUsedR, memoryUsedW, idleTimes)
 	}
 
 	wg.Wait()
 
 	executionTime := time.Since(startTime).Milliseconds()
-	close(processedFiles)
 	close(memoryUsed)
-	close(idleTimes)
-	close(memoryUsedW)
 	close(memoryUsedR)
+	close(memoryUsedW)
+	close(idleTimes)
+	close(processedFiles)
+	close(ioSem)
 
 	for path := range processedFiles {
 		err := deleteFile(path)
@@ -97,45 +100,75 @@ func (es *ExecuteService) Execute() entities.ExecutionResult {
 	}
 }
 
-func processFile(wg *sync.WaitGroup, tempFiles chan string, processedFiles chan string, memoryUsed chan int64, memoryUsedR chan int64, memoryUsedW chan int64, idleTimes chan int64, es *ExecuteService) {
+func (es *ExecuteService) worker(wg *sync.WaitGroup,
+	tempFiles chan string,
+	ioSem chan struct{},
+	processedFiles chan string,
+	memoryUsed chan int64,
+	memoryUsedR chan int64,
+	memoryUsedW chan int64,
+	idleTimes chan int64) {
+
 	defer wg.Done()
+
+	doneChan := make(chan bool)
+	activeGoroutines := 0
+
 	for tempFile := range tempFiles {
-		goroutineStartTime := time.Now()
-		initialMemory := getMemoryNow()
-		professionalSalaries, err := es.FileService.Read(tempFile)
-		if err != nil {
-			log.Print("deu ruim ", err)
-			continue
-		}
+		ioSem <- struct{}{}
+		activeGoroutines++
 
-		memoryUsedR <- getUsedMemory(initialMemory)
-
-		for i := range professionalSalaries {
-			titleHash, _ := es.MappingService.GetHash(professionalSalaries[i].JobTitle, enum.TITLE)
-			locationHash, _ := es.MappingService.GetHash(professionalSalaries[i].Location, enum.LOCATION)
-			professionalSalaries[i].JobTitle = strconv.Itoa(titleHash)
-			professionalSalaries[i].Location = strconv.Itoa(locationHash)
-		}
-		memoryUsed <- getUsedMemory(initialMemory)
-		beforeMemoryRead := getMemoryNow()
-		result, err := es.FileService.Write(professionalSalaries)
-		if err != nil {
-			log.Print("deu ruim ", err)
-			continue
-		}
-		processedFiles <- result
-		memoryUsedW <- getUsedMemory(beforeMemoryRead)
-		memoryUsed <- getUsedMemory(initialMemory)
-		err = deleteFile(tempFile)
-		if err != nil {
-			log.Print("deu ruim ", err)
-			continue
-		}
-		goroutineEndTime := time.Now()
-		idleTime := goroutineEndTime.Sub(goroutineStartTime).Milliseconds()
-		idleTimes <- idleTime
-		if len(tempFiles) == 0 {
-			return
-		}
+		go func(file string) {
+			es.processFile(file, processedFiles, memoryUsed, memoryUsedR, memoryUsedW, idleTimes)
+			<-ioSem
+			doneChan <- true
+		}(tempFile)
 	}
+
+	for i := 0; i < activeGoroutines; i++ {
+		<-doneChan
+	}
+}
+
+func (es *ExecuteService) processFile(tempFile string,
+	processedFiles chan string,
+	memoryUsed chan int64,
+	memoryUsedR chan int64,
+	memoryUsedW chan int64,
+	idleTimes chan int64) {
+
+	goroutineStartTime := time.Now()
+	initialMemory := getMemoryNow()
+	professionalSalaries, err := es.FileService.Read(tempFile)
+	if err != nil {
+		log.Print("Error while reading ", err)
+		return
+	}
+
+	memoryUsedR <- getUsedMemory(initialMemory)
+
+	for i := range professionalSalaries {
+		titleHash, _ := es.MappingService.GetHash(professionalSalaries[i].JobTitle, enum.TITLE)
+		locationHash, _ := es.MappingService.GetHash(professionalSalaries[i].Location, enum.LOCATION)
+		professionalSalaries[i].JobTitle = strconv.Itoa(titleHash)
+		professionalSalaries[i].Location = strconv.Itoa(locationHash)
+	}
+	memoryUsed <- getUsedMemory(initialMemory)
+	beforeMemoryRead := getMemoryNow()
+	result, err := es.FileService.Write(professionalSalaries)
+	if err != nil {
+		log.Print("Error trying to write ", err)
+		return
+	}
+	processedFiles <- result
+	memoryUsedW <- getUsedMemory(beforeMemoryRead)
+	memoryUsed <- getUsedMemory(initialMemory)
+	err = deleteFile(tempFile)
+	if err != nil {
+		log.Print("Error trying to delete single file ", err)
+		return
+	}
+	goroutineEndTime := time.Now()
+	idleTime := goroutineEndTime.Sub(goroutineStartTime).Milliseconds()
+	idleTimes <- idleTime
 }
