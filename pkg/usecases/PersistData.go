@@ -9,8 +9,8 @@ import (
 )
 
 const (
-	InsertSql         = "INSERT INTO g_data (m_thread, m_memory, m_memory_r, m_memory_w, m_speed_up, m_efficiency, m_execution_time, m_overhead, m_iddle_thread, m_full_execution_time) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)"
-	InsertSqlOt       = "INSERT INTO g_data_ot (m_thread, m_memory, m_memory_r, m_memory_w, m_execution_time, m_iddle_thread, m_full_execution_time) VALUES ($1, $2, $3, $4, $5, $6, $7)"
+	InsertSql         = "INSERT INTO g_data (m_thread, m_memory, m_execution_r, m_execution_w, m_speed_up, m_efficiency, m_execution_time, m_overhead, m_iddle_thread, m_full_execution_time) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)"
+	InsertSqlOt       = "INSERT INTO g_data_ot (m_thread, m_memory, m_execution_r, m_execution_w, m_execution_time, m_iddle_thread, m_full_execution_time) VALUES ($1, $2, $3, $4, $5, $6, $7)"
 	InsertRecordParam = "INSERT INTO record_params (r_sequential_time, r_max_threads, r_lang) VALUES ($1, $2, $3)"
 )
 

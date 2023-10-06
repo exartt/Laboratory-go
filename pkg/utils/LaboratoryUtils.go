@@ -11,7 +11,7 @@ import (
 
 var sequentialExecutionTime float64 = 0
 
-func GetMedianMemory(memoryUsedList chan int64) int64 {
+func getMedianMemory(memoryUsedList chan int64) int64 {
 	var ret = big.NewInt(0)
 	size := int64(len(memoryUsedList))
 	for memUsed := range memoryUsedList {
@@ -19,25 +19,6 @@ func GetMedianMemory(memoryUsedList chan int64) int64 {
 	}
 
 	ret.Div(ret, big.NewInt(size))
-
-	return ret.Int64()
-}
-
-func GetMedianMemoryTotal(memoryUsedList chan int64, sizeR int, sumR int64) int64 {
-	ret := big.NewInt(0)
-	size := big.NewInt(0)
-	for memUsed := range memoryUsedList {
-		ret.Add(ret, big.NewInt(memUsed))
-		size.Add(size, big.NewInt(1))
-	}
-	ret.Add(ret, big.NewInt(sumR))
-	size.Add(size, big.NewInt(int64(sizeR)))
-
-	if size.Int64() == 0 {
-		return 0
-	}
-
-	ret.Div(ret, size)
 
 	return ret.Int64()
 }
@@ -105,29 +86,25 @@ func SetUsedThread(threads int) {
 func ExecuteAndCollectData(executeService *usecases.ExecuteService, threadType string, numIterations int) {
 	for i := 0; i < numIterations; i++ {
 		fmt.Printf("Initiating %s capture number: %d\n", threadType, i)
-
 		currentTimeMillis := time.Now().UnixNano() / int64(time.Millisecond)
 		result := executeService.Execute()
 
-		sizeR := len(result.MemoryUsedR)
-		sumR := sumAll(result.MemoryUsedR)
-
-		memoryResult := GetMedianMemoryTotal(result.MemoryUsed, sizeR, sumR)
-		memoryResultR := sumR / int64(sizeR)
-		memoryResultW := GetMedianMemory(result.MemoryUsedW)
+		memoryResult := getMedianMemory(result.MemoryUsed)
+		executionTimeR := sumAll(result.ExecutionTimeR)
+		executionTimeW := sumAll(result.ExecutionTimeW)
 		idleThreadTime := CalculateAverageIdleTimeInMilliseconds(result.IdleTimes)
 		timeSpent := (time.Now().UnixNano() / int64(time.Millisecond)) - currentTimeMillis
 
-		PersistData(result.ExecutionTime, memoryResult, memoryResultR, memoryResultW, idleThreadTime, threadType == "singleThread", timeSpent)
+		PersistData(result.ExecutionTime, memoryResult, executionTimeR, executionTimeW, idleThreadTime, threadType == "singleThread", timeSpent)
 
 		fmt.Printf("capture %s nº %d collected successfully\n", threadType, i)
 	}
 }
 
-func sumAll(memoryR chan int64) int64 {
+func sumAll(sumChan chan int64) int64 {
 	var ret = big.NewInt(0)
-	for memR := range memoryR {
-		ret.Add(ret, big.NewInt(memR))
+	for sum := range sumChan {
+		ret.Add(ret, big.NewInt(sum))
 	}
-	return ret.Int64()
+	return ret.Div(ret, big.NewInt(23)).Int64()
 }

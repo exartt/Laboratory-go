@@ -54,12 +54,13 @@ func deleteFile(path string) error {
 
 func (es *ExecuteService) Execute() entities.ExecutionResult {
 	var wg sync.WaitGroup
+	runtime.GOMAXPROCS(UsedThread)
+
 	tempFiles, _ := es.FileService.CreateBuckets(filePath)
-	ioSem := make(chan struct{}, UsedThread)
 	processedFiles := make(chan string, 23)
 	memoryUsed := make(chan int64, 69)
-	memoryUsedR := make(chan int64, 23)
-	memoryUsedW := make(chan int64, 23)
+	executionTimeR := make(chan int64, 23)
+	executionTimeW := make(chan int64, 23)
 	idleTimes := make(chan int64, 23)
 	tempFilesChan := make(chan string, len(tempFiles))
 
@@ -69,20 +70,25 @@ func (es *ExecuteService) Execute() entities.ExecutionResult {
 	close(tempFilesChan)
 
 	startTime := time.Now()
-	for i := 0; i < UsedThread; i++ {
-		wg.Add(1)
-		go es.worker(&wg, tempFilesChan, ioSem, processedFiles, memoryUsed, memoryUsedR, memoryUsedW, idleTimes)
-	}
+	for _, tempFile := range tempFiles {
+		waitStart := time.Now()
+		waitEnd := time.Now()
+		waitTime := waitEnd.Sub(waitStart).Milliseconds()
+		idleTimes <- waitTime
 
+		wg.Add(1)
+		go func(file string) {
+			es.processFile(&wg, file, processedFiles, memoryUsed, executionTimeR, executionTimeW)
+		}(tempFile)
+	}
 	wg.Wait()
 
 	executionTime := time.Since(startTime).Milliseconds()
 	close(memoryUsed)
-	close(memoryUsedR)
-	close(memoryUsedW)
+	close(executionTimeR)
+	close(executionTimeW)
 	close(idleTimes)
 	close(processedFiles)
-	close(ioSem)
 
 	for path := range processedFiles {
 		err := deleteFile(path)
@@ -92,60 +98,63 @@ func (es *ExecuteService) Execute() entities.ExecutionResult {
 	}
 
 	return entities.ExecutionResult{
-		MemoryUsed:    memoryUsed,
-		IdleTimes:     idleTimes,
-		ExecutionTime: executionTime,
-		MemoryUsedR:   memoryUsedR,
-		MemoryUsedW:   memoryUsedW,
+		MemoryUsed:     memoryUsed,
+		IdleTimes:      idleTimes,
+		ExecutionTime:  executionTime,
+		ExecutionTimeR: executionTimeR,
+		ExecutionTimeW: executionTimeW,
 	}
 }
 
-func (es *ExecuteService) worker(wg *sync.WaitGroup,
-	tempFiles chan string,
-	ioSem chan struct{},
+//func (es *ExecuteService) worker(wg *sync.WaitGroup,
+//	tempFiles chan string,
+//	ioSem chan struct{},
+//	processedFiles chan string,
+//	memoryUsed, executionTimeR, executionTimeW, idleTimes chan int64) {
+//
+//	defer wg.Done()
+//
+//	doneChan := make(chan bool)
+//	activeGoroutines := 0
+//
+//	for tempFile := range tempFiles {
+//		waitStart := time.Now()
+//		ioSem <- struct{}{}
+//		waitEnd := time.Now()
+//		waitTime := waitEnd.Sub(waitStart).Milliseconds()
+//		idleTimes <- waitTime
+//		activeGoroutines++
+//
+//		go func(file string) {
+//			es.processFile(file, processedFiles, memoryUsed, executionTimeR, executionTimeW)
+//			<-ioSem
+//			doneChan <- true
+//		}(tempFile)
+//	}
+//
+//	for i := 0; i < activeGoroutines; i++ {
+//		<-doneChan
+//	}
+//}
+
+func (es *ExecuteService) processFile(wg *sync.WaitGroup, tempFile string,
 	processedFiles chan string,
 	memoryUsed chan int64,
-	memoryUsedR chan int64,
-	memoryUsedW chan int64,
-	idleTimes chan int64) {
+	executionTimeR chan int64,
+	executionTimeW chan int64) {
 
 	defer wg.Done()
 
-	doneChan := make(chan bool)
-	activeGoroutines := 0
-
-	for tempFile := range tempFiles {
-		ioSem <- struct{}{}
-		activeGoroutines++
-
-		go func(file string) {
-			es.processFile(file, processedFiles, memoryUsed, memoryUsedR, memoryUsedW, idleTimes)
-			<-ioSem
-			doneChan <- true
-		}(tempFile)
-	}
-
-	for i := 0; i < activeGoroutines; i++ {
-		<-doneChan
-	}
-}
-
-func (es *ExecuteService) processFile(tempFile string,
-	processedFiles chan string,
-	memoryUsed chan int64,
-	memoryUsedR chan int64,
-	memoryUsedW chan int64,
-	idleTimes chan int64) {
-
-	goroutineStartTime := time.Now()
 	initialMemory := getMemoryNow()
+
+	getTime := time.Now()
 	professionalSalaries, err := es.FileService.Read(tempFile)
 	if err != nil {
 		log.Print("Error while reading ", err)
 		return
 	}
 
-	memoryUsedR <- getUsedMemory(initialMemory)
+	executionTimeR <- time.Now().Sub(getTime).Milliseconds()
 
 	for i := range professionalSalaries {
 		titleHash, _ := es.MappingService.GetHash(professionalSalaries[i].JobTitle, enum.TITLE)
@@ -154,21 +163,21 @@ func (es *ExecuteService) processFile(tempFile string,
 		professionalSalaries[i].Location = strconv.Itoa(locationHash)
 	}
 	memoryUsed <- getUsedMemory(initialMemory)
-	beforeMemoryRead := getMemoryNow()
+
+	getTime = time.Now()
 	result, err := es.FileService.Write(professionalSalaries)
 	if err != nil {
 		log.Print("Error trying to write ", err)
 		return
 	}
+	executionTimeW <- time.Now().Sub(getTime).Milliseconds()
+
 	processedFiles <- result
-	memoryUsedW <- getUsedMemory(beforeMemoryRead)
 	memoryUsed <- getUsedMemory(initialMemory)
+
 	err = deleteFile(tempFile)
 	if err != nil {
 		log.Print("Error trying to delete single file ", err)
 		return
 	}
-	goroutineEndTime := time.Now()
-	idleTime := goroutineEndTime.Sub(goroutineStartTime).Milliseconds()
-	idleTimes <- idleTime
 }
