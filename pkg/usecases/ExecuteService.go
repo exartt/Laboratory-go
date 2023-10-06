@@ -15,7 +15,6 @@ var UsedThread = 1
 
 const (
 	filePath = "/home/opc/Laboratory-go/resources/Software_Professional_Salaries.csv"
-	//filePath = "C:\\Users\\leo_m\\GolandProjects\\Laboratory-go\\resources\\Software_Professional_Salaries.csv"
 )
 
 type IExecuteService interface {
@@ -105,37 +104,6 @@ func (es *ExecuteService) Execute() entities.ExecutionResult {
 		ExecutionTimeW: executionTimeW,
 	}
 }
-
-//func (es *ExecuteService) worker(wg *sync.WaitGroup,
-//	tempFiles chan string,
-//	ioSem chan struct{},
-//	processedFiles chan string,
-//	memoryUsed, executionTimeR, executionTimeW, idleTimes chan int64) {
-//
-//	defer wg.Done()
-//
-//	doneChan := make(chan bool)
-//	activeGoroutines := 0
-//
-//	for tempFile := range tempFiles {
-//		waitStart := time.Now()
-//		ioSem <- struct{}{}
-//		waitEnd := time.Now()
-//		waitTime := waitEnd.Sub(waitStart).Milliseconds()
-//		idleTimes <- waitTime
-//		activeGoroutines++
-//
-//		go func(file string) {
-//			es.processFile(file, processedFiles, memoryUsed, executionTimeR, executionTimeW)
-//			<-ioSem
-//			doneChan <- true
-//		}(tempFile)
-//	}
-//
-//	for i := 0; i < activeGoroutines; i++ {
-//		<-doneChan
-//	}
-//}
 
 func (es *ExecuteService) processFile(wg *sync.WaitGroup, tempFile string,
 	processedFiles chan string,

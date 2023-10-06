@@ -12,8 +12,8 @@ func main() {
 	fileService := usecases.NewFileService()
 	mappingService := usecases.NewMappingService()
 
-	const repeatProcess = 1000
-	for numGoRoutines := 1; numGoRoutines <= runtime.NumCPU(); numGoRoutines++ {
+	const repeatProcess = 15000
+	for numGoRoutines := 1; numGoRoutines <= 4; numGoRoutines++ {
 		fmt.Printf(" ============ ALLOWED GO ROUTINES: %d ============\n", numGoRoutines)
 		typeThread := "singleThread"
 		runtime.GC()
