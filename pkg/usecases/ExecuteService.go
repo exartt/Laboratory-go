@@ -3,7 +3,8 @@ package usecases
 import (
 	"Laboratory-go/pkg/entities"
 	"Laboratory-go/pkg/usecases/enum"
-	"Laboratory-go/pkg/utils"
+	"bufio"
+	"fmt"
 	"os"
 	"runtime"
 	"strconv"
@@ -130,11 +131,36 @@ func (es *ExecuteService) processFile(wg *sync.WaitGroup, tempFile string,
 	result, _ := es.FileService.Write(professionalSalaries)
 	executionTimeW <- time.Now().Sub(getTime).Milliseconds()
 
-	if utils.HasThousandLines(result, len(professionalSalaries)+1) {
+	if hasThousandLines(result, len(professionalSalaries)+1) {
 		IsValid = false
 	}
 	processedFiles <- result
 	memoryUsed <- getUsedMemory(initialMemory)
 
 	deleteFile(tempFile)
+}
+
+func hasThousandLines(filePath string, size int) bool {
+	file, err := os.Open(filePath)
+	if err != nil {
+		fmt.Println("Error opening file:", err)
+		return false
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	lineCount := 0
+	for scanner.Scan() {
+		lineCount++
+		if lineCount > size {
+			return false
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		fmt.Println("Error reading file:", err)
+		return false
+	}
+
+	return lineCount == size
 }

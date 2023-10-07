@@ -3,11 +3,9 @@ package utils
 import (
 	"Laboratory-go/pkg/entities"
 	"Laboratory-go/pkg/usecases"
-	"bufio"
 	"fmt"
 	_ "github.com/lib/pq"
 	"math/big"
-	"os"
 	"time"
 )
 
@@ -109,29 +107,4 @@ func sumAll(sumChan chan int64) int64 {
 		ret.Add(ret, big.NewInt(sum))
 	}
 	return ret.Div(ret, big.NewInt(23)).Int64()
-}
-
-func HasThousandLines(filePath string, size int) bool {
-	file, err := os.Open(filePath)
-	if err != nil {
-		fmt.Println("Error opening file:", err)
-		return false
-	}
-	defer file.Close()
-
-	scanner := bufio.NewScanner(file)
-	lineCount := 0
-	for scanner.Scan() {
-		lineCount++
-		if lineCount > size {
-			return false
-		}
-	}
-
-	if err := scanner.Err(); err != nil {
-		fmt.Println("Error reading file:", err)
-		return false
-	}
-
-	return lineCount == size
 }
