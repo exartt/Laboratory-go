@@ -13,8 +13,8 @@ import (
 var UsedThread = 1
 
 const (
-	//filePath = "resources/Software_Professional_Salaries.csv"
-	filePath = "/home/opc/Laboratory-go/resources/Software_Professional_Salaries.csv"
+	filePath = "resources/Software_Professional_Salaries.csv"
+	//filePath = "/home/opc/Laboratory-go/resources/Software_Professional_Salaries.csv"
 )
 
 type IExecuteService interface {
@@ -53,7 +53,7 @@ func deleteFile(path string) error {
 
 func (es *ExecuteService) Execute() entities.ExecutionResult {
 	var wg sync.WaitGroup
-	runtime.GOMAXPROCS(8)
+	runtime.GOMAXPROCS(UsedThread)
 
 	tempFiles, _ := es.FileService.CreateBuckets(filePath)
 	processedFiles := make(chan string, 23)
@@ -102,6 +102,8 @@ func (es *ExecuteService) Execute() entities.ExecutionResult {
 	}
 }
 
+var ioSemaphore = make(chan struct{}, 5)
+
 func (es *ExecuteService) processFile(wg *sync.WaitGroup, tempFile string,
 	processedFiles chan string,
 	memoryUsed chan int64,
@@ -112,9 +114,15 @@ func (es *ExecuteService) processFile(wg *sync.WaitGroup, tempFile string,
 
 	initialMemory := getMemoryNow()
 
+	ioSemaphore <- struct{}{}
+
 	getTime := time.Now()
 	professionalSalaries, _ := es.FileService.Read(tempFile)
 	executionTimeR <- time.Now().Sub(getTime).Milliseconds()
+
+	<-ioSemaphore
+
+	memoryUsed <- getUsedMemory(initialMemory)
 
 	for i := range professionalSalaries {
 		titleHash, _ := es.MappingService.GetHash(professionalSalaries[i].JobTitle, enum.TITLE)
@@ -122,15 +130,19 @@ func (es *ExecuteService) processFile(wg *sync.WaitGroup, tempFile string,
 		professionalSalaries[i].JobTitle = strconv.Itoa(titleHash)
 		professionalSalaries[i].Location = strconv.Itoa(locationHash)
 	}
+
 	memoryUsed <- getUsedMemory(initialMemory)
+
+	ioSemaphore <- struct{}{}
 
 	getTime = time.Now()
 	result, _ := es.FileService.Write(professionalSalaries)
-
 	executionTimeW <- time.Now().Sub(getTime).Milliseconds()
 
-	processedFiles <- result
+	<-ioSemaphore
+
 	memoryUsed <- getUsedMemory(initialMemory)
+	processedFiles <- result
 
 	deleteFile(tempFile)
 }
