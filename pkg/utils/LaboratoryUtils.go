@@ -23,13 +23,13 @@ func getMedianMemory(memoryUsedList chan int64) int64 {
 	return ret.Int64()
 }
 
-func PersistData(executionTime, memoryUsedMedian, memoryUsedMedianR, memoryUsedMedianW, idleThreadTimeMedian int64, isSingleThread bool, fullExecutionTime int64) {
+func PersistData(executionTime, memoryUsedMedian, exeR, exeW, idleThreadTimeMedian int64, isSingleThread bool, fullExecutionTime int64) {
 	dataCollected := entities.DataCollected{}
 
 	dataCollected.ExecutionTime = executionTime
 	dataCollected.Memory = memoryUsedMedian
-	dataCollected.MemoryR = memoryUsedMedianR
-	dataCollected.MemoryW = memoryUsedMedianW
+	dataCollected.ExeR = exeR
+	dataCollected.ExeW = exeW
 	dataCollected.IsSingleThread = isSingleThread
 
 	if !isSingleThread {

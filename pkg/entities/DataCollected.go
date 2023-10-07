@@ -2,8 +2,8 @@ package entities
 
 type DataCollected struct {
 	Memory               int64
-	MemoryR              int64
-	MemoryW              int64
+	ExeR                 int64
+	ExeW                 int64
 	Speedup              float64
 	Efficiency           float64
 	ExecutionTime        int64

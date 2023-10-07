@@ -161,7 +161,6 @@ func (m *FileService) Write(professionalSalaries []entities.ProfessionalSalary) 
 	return tempFile.Name(), nil
 }
 
-// new
 func (m *FileService) Read(filePath string) ([]entities.ProfessionalSalary, error) {
 	professionalSalaryList := professionalSalaryListPool.Get().([]entities.ProfessionalSalary)
 
@@ -178,6 +177,11 @@ func (m *FileService) Read(filePath string) ([]entities.ProfessionalSalary, erro
 
 	for {
 		line, _ := reader.Read()
+
+		if line == nil {
+			break
+		}
+
 		rating, _ := strconv.ParseFloat(line[0], 64)
 		salary, _ := strconv.ParseFloat(line[3], 64)
 		reports, _ := strconv.Atoi(line[4])
@@ -190,11 +194,48 @@ func (m *FileService) Read(filePath string) ([]entities.ProfessionalSalary, erro
 			Reports:     reports,
 			Location:    line[5],
 		}
+
+		// Adiciona o novo item à lista
 		professionalSalaryList = append(professionalSalaryList, professionalSalary)
 	}
 
 	return professionalSalaryList, nil
 }
+
+// new
+//func (m *FileService) Read(filePath string) ([]entities.ProfessionalSalary, error) {
+//	professionalSalaryList := professionalSalaryListPool.Get().([]entities.ProfessionalSalary)
+//
+//	file, _ := os.Open(filePath)
+//	defer func() {
+//		file.Close()
+//		professionalSalaryListPool.Put(professionalSalaryList)
+//	}()
+//
+//	bufferedReader := bufio.NewReaderSize(file, 64*1024)
+//	reader := csv.NewReader(bufferedReader)
+//
+//	reader.Read()
+//
+//	for {
+//		line, _ := reader.Read()
+//		rating, _ := strconv.ParseFloat(line[0], 64)
+//		salary, _ := strconv.ParseFloat(line[3], 64)
+//		reports, _ := strconv.Atoi(line[4])
+//
+//		professionalSalary := entities.ProfessionalSalary{
+//			Rating:      rating,
+//			CompanyName: line[1],
+//			JobTitle:    line[2],
+//			Salary:      salary,
+//			Reports:     reports,
+//			Location:    line[5],
+//		}
+//		professionalSalaryList = append(professionalSalaryList, professionalSalary)
+//	}
+//
+//	return professionalSalaryList, nil
+//}
 
 //func (m *FileService) Read(filePath string) ([]entities.ProfessionalSalary, error) {
 //	professionalSalaryList := make([]entities.ProfessionalSalary, 0, 1000)
