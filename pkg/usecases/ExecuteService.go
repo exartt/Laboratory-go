@@ -53,7 +53,7 @@ func deleteFile(path string) error {
 
 func (es *ExecuteService) Execute() entities.ExecutionResult {
 	var wg sync.WaitGroup
-	runtime.GOMAXPROCS(UsedThread)
+	runtime.GOMAXPROCS(16)
 
 	tempFiles, _ := es.FileService.CreateBuckets(filePath)
 	processedFiles := make(chan string, 23)
@@ -114,7 +114,6 @@ func (es *ExecuteService) processFile(wg *sync.WaitGroup, tempFile string,
 
 	getTime := time.Now()
 	professionalSalaries, _ := es.FileService.Read(tempFile)
-
 	executionTimeR <- time.Now().Sub(getTime).Milliseconds()
 
 	for i := range professionalSalaries {
