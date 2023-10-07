@@ -5,7 +5,6 @@ import (
 	"bufio"
 	"encoding/csv"
 	"fmt"
-	"io"
 	"log"
 	"os"
 	"strconv"
@@ -89,53 +88,53 @@ func (m *FileService) CreateBuckets(pathFile string) ([]string, error) {
 	return tempFiles, nil
 }
 
-func (m *FileService) Read(filePath string) ([]entities.ProfessionalSalary, error) {
-	professionalSalaryList := professionalSalaryListPool.Get().([]entities.ProfessionalSalary)
-	defer professionalSalaryListPool.Put(professionalSalaryList)
-
-	file, err := os.Open(filePath)
-	if err != nil {
-		return nil, err
-	}
-	defer file.Close()
-
-	fi, err := file.Stat()
-	if err != nil {
-		return nil, err
-	}
-	bufferSize := fi.Size()
-	bufferedReader := bufio.NewReaderSize(file, int(bufferSize))
-
-	reader := csv.NewReader(bufferedReader)
-	_, _ = reader.Read()
-
-	//professionalSalaryList := make([]entities.ProfessionalSalary, 0, 1000)
-	var line []string
-	for {
-		line, err = reader.Read()
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			return nil, err
-		}
-
-		rating, _ := strconv.ParseFloat(line[0], 64)
-		salary, _ := strconv.ParseFloat(line[3], 64)
-		reports, _ := strconv.Atoi(line[4])
-
-		professionalSalary := entities.ProfessionalSalary{
-			Rating:      rating,
-			CompanyName: line[1],
-			JobTitle:    line[2],
-			Salary:      salary,
-			Reports:     reports,
-			Location:    line[5],
-		}
-		professionalSalaryList = append(professionalSalaryList, professionalSalary)
-	}
-	return professionalSalaryList, nil
-}
+//func (m *FileService) Read(filePath string) ([]entities.ProfessionalSalary, error) {
+//	professionalSalaryList := professionalSalaryListPool.Get().([]entities.ProfessionalSalary)
+//	defer professionalSalaryListPool.Put(professionalSalaryList)
+//
+//	file, err := os.Open(filePath)
+//	if err != nil {
+//		return nil, err
+//	}
+//	defer file.Close()
+//
+//	fi, err := file.Stat()
+//	if err != nil {
+//		return nil, err
+//	}
+//	bufferSize := fi.Size()
+//	bufferedReader := bufio.NewReaderSize(file, int(bufferSize))
+//
+//	reader := csv.NewReader(bufferedReader)
+//	_, _ = reader.Read()
+//
+//	//professionalSalaryList := make([]entities.ProfessionalSalary, 0, 1000)
+//	var line []string
+//	for {
+//		line, err = reader.Read()
+//		if err == io.EOF {
+//			break
+//		}
+//		if err != nil {
+//			return nil, err
+//		}
+//
+//		rating, _ := strconv.ParseFloat(line[0], 64)
+//		salary, _ := strconv.ParseFloat(line[3], 64)
+//		reports, _ := strconv.Atoi(line[4])
+//
+//		professionalSalary := entities.ProfessionalSalary{
+//			Rating:      rating,
+//			CompanyName: line[1],
+//			JobTitle:    line[2],
+//			Salary:      salary,
+//			Reports:     reports,
+//			Location:    line[5],
+//		}
+//		professionalSalaryList = append(professionalSalaryList, professionalSalary)
+//	}
+//	return professionalSalaryList, nil
+//}
 
 func (m *FileService) Write(professionalSalaries []entities.ProfessionalSalary) (string, error) {
 	tempFile, err := os.CreateTemp("", "bucket_result_*.csv")
@@ -162,62 +161,40 @@ func (m *FileService) Write(professionalSalaries []entities.ProfessionalSalary) 
 	return tempFile.Name(), nil
 }
 
-//new
-//func (m *FileService) Read(filePath string) ([]entities.ProfessionalSalary, error) {
-//	professionalSalaryList := make([]entities.ProfessionalSalary, 0, 1000)
-//
-//	file, err := os.Open(filePath)
-//	if err != nil {
-//		return nil, fmt.Errorf("could not open file: %v", err)
-//	}
-//	defer func() {
-//		if cerr := file.Close(); cerr != nil {
-//			log.Printf("Failed to close file during reading: %v", cerr)
-//		}
-//	}()
-//
-//	bufferedReader := bufio.NewReaderSize(file, 64*1024)
-//	reader := csv.NewReader(bufferedReader)
-//
-//	if _, err := reader.Read(); err != nil {
-//		return nil, fmt.Errorf("error reading header: %v", err)
-//	}
-//
-//	for {
-//		line, err := reader.Read()
-//		if err == io.EOF {
-//			break
-//		}
-//		if err != nil {
-//			return nil, fmt.Errorf("error reading line: %v", err)
-//		}
-//
-//		rating, err := strconv.ParseFloat(line[0], 64)
-//		if err != nil {
-//			return nil, fmt.Errorf("could not parse rating: %v", err)
-//		}
-//		salary, err := strconv.ParseFloat(line[3], 64)
-//		if err != nil {
-//			return nil, fmt.Errorf("could not parse salary: %v", err)
-//		}
-//		reports, err := strconv.Atoi(line[4])
-//		if err != nil {
-//			return nil, fmt.Errorf("could not parse reports: %v", err)
-//		}
-//
-//		professionalSalary := entities.ProfessionalSalary{
-//			Rating:      rating,
-//			CompanyName: line[1],
-//			JobTitle:    line[2],
-//			Salary:      salary,
-//			Reports:     reports,
-//			Location:    line[5],
-//		}
-//		professionalSalaryList = append(professionalSalaryList, professionalSalary)
-//	}
-//
-//	return professionalSalaryList, nil
-//}
+// new
+func (m *FileService) Read(filePath string) ([]entities.ProfessionalSalary, error) {
+	professionalSalaryList := professionalSalaryListPool.Get().([]entities.ProfessionalSalary)
+
+	file, _ := os.Open(filePath)
+	defer func() {
+		file.Close()
+		professionalSalaryListPool.Put(professionalSalaryList)
+	}()
+
+	bufferedReader := bufio.NewReaderSize(file, 64*1024)
+	reader := csv.NewReader(bufferedReader)
+
+	reader.Read()
+
+	for {
+		line, _ := reader.Read()
+		rating, _ := strconv.ParseFloat(line[0], 64)
+		salary, _ := strconv.ParseFloat(line[3], 64)
+		reports, _ := strconv.Atoi(line[4])
+
+		professionalSalary := entities.ProfessionalSalary{
+			Rating:      rating,
+			CompanyName: line[1],
+			JobTitle:    line[2],
+			Salary:      salary,
+			Reports:     reports,
+			Location:    line[5],
+		}
+		professionalSalaryList = append(professionalSalaryList, professionalSalary)
+	}
+
+	return professionalSalaryList, nil
+}
 
 //func (m *FileService) Read(filePath string) ([]entities.ProfessionalSalary, error) {
 //	professionalSalaryList := make([]entities.ProfessionalSalary, 0, 1000)

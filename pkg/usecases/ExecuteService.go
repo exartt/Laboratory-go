@@ -3,7 +3,6 @@ package usecases
 import (
 	"Laboratory-go/pkg/entities"
 	"Laboratory-go/pkg/usecases/enum"
-	"log"
 	"os"
 	"runtime"
 	"strconv"
@@ -91,10 +90,7 @@ func (es *ExecuteService) Execute() entities.ExecutionResult {
 	close(processedFiles)
 
 	for path := range processedFiles {
-		err := deleteFile(path)
-		if err != nil {
-			log.Print(err)
-		}
+		deleteFile(path)
 	}
 
 	return entities.ExecutionResult{
