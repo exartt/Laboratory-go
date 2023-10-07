@@ -90,12 +90,12 @@ func (es *ExecuteService) Execute() entities.ExecutionResult {
 	close(idleTimes)
 	close(processedFiles)
 
-	//for path := range processedFiles {
-	//	err := deleteFile(path)
-	//	if err != nil {
-	//		log.Print(err)
-	//	}
-	//}
+	for path := range processedFiles {
+		err := deleteFile(path)
+		if err != nil {
+			log.Print(err)
+		}
+	}
 
 	return entities.ExecutionResult{
 		MemoryUsed:     memoryUsed,
@@ -117,11 +117,7 @@ func (es *ExecuteService) processFile(wg *sync.WaitGroup, tempFile string,
 	initialMemory := getMemoryNow()
 
 	getTime := time.Now()
-	professionalSalaries, err := es.FileService.Read(tempFile)
-	if err != nil {
-		log.Print("Error while reading ", err)
-		return
-	}
+	professionalSalaries, _ := es.FileService.Read(tempFile)
 
 	executionTimeR <- time.Now().Sub(getTime).Milliseconds()
 
@@ -134,19 +130,12 @@ func (es *ExecuteService) processFile(wg *sync.WaitGroup, tempFile string,
 	memoryUsed <- getUsedMemory(initialMemory)
 
 	getTime = time.Now()
-	result, err := es.FileService.Write(professionalSalaries)
-	if err != nil {
-		log.Print("Error trying to write ", err)
-		return
-	}
+	result, _ := es.FileService.Write(professionalSalaries)
+
 	executionTimeW <- time.Now().Sub(getTime).Milliseconds()
 
 	processedFiles <- result
 	memoryUsed <- getUsedMemory(initialMemory)
 
-	err = deleteFile(tempFile)
-	if err != nil {
-		log.Print("Error trying to delete single file ", err)
-		return
-	}
+	deleteFile(tempFile)
 }
