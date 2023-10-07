@@ -5,7 +5,6 @@ import (
 	"bufio"
 	"encoding/csv"
 	"fmt"
-	"io"
 	"log"
 	"os"
 	"strconv"
@@ -84,46 +83,55 @@ func (m *FileService) CreateBuckets(pathFile string) ([]string, error) {
 }
 
 func (m *FileService) Read(filePath string) ([]entities.ProfessionalSalary, error) {
-	professionalSalaryList := make([]entities.ProfessionalSalary, 0, 1000)
+	professionalSalaryList := make([]entities.ProfessionalSalary, 0, MaxRows)
 
-	file, _ := os.Open(filePath)
-	defer func() {
-		file.Close()
-	}()
+	file, err := os.Open(filePath)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
 
-	bufferedReader := bufio.NewReaderSize(file, 64*1024)
-	reader := csv.NewReader(bufferedReader)
+	r := csv.NewReader(bufio.NewReaderSize(file, 64*1024))
 
-	_, _ = reader.Read()
+	_, err = r.Read()
+	if err != nil {
+		return nil, err
+	}
 
-	for {
-		line, err := reader.Read()
-		if err == io.EOF {
-			break
+	records, err := r.ReadAll()
+	if err != nil {
+		return nil, err
+	}
+
+	for _, record := range records {
+		rating, err := strconv.ParseFloat(record[0], 64)
+		if err != nil {
+			return nil, err
 		}
-		rating, _ := strconv.ParseFloat(line[0], 64)
-		salary, _ := strconv.ParseFloat(line[3], 64)
-		reports, _ := strconv.Atoi(line[4])
+		salary, err := strconv.ParseFloat(record[3], 64)
+		if err != nil {
+			return nil, err
+		}
+		reports, err := strconv.Atoi(record[4])
+		if err != nil {
+			return nil, err
+		}
 
-		professionalSalary := entities.ProfessionalSalary{
+		professionalSalaryList = append(professionalSalaryList, entities.ProfessionalSalary{
 			Rating:      rating,
-			CompanyName: line[1],
-			JobTitle:    line[2],
+			CompanyName: record[1],
+			JobTitle:    record[2],
 			Salary:      salary,
 			Reports:     reports,
-			Location:    line[5],
-		}
-		professionalSalaryList = append(professionalSalaryList, professionalSalary)
+			Location:    record[5],
+		})
 	}
 
 	return professionalSalaryList, nil
 }
 
 func (m *FileService) Write(professionalSalaries []entities.ProfessionalSalary) (string, error) {
-	tempFile, err := os.CreateTemp("", "bucket_result_*.csv")
-	if err != nil {
-		return "", err
-	}
+	tempFile, _ := os.CreateTemp("", "bucket_result_*.csv")
 	defer tempFile.Close()
 
 	var builder strings.Builder
@@ -142,15 +150,9 @@ func (m *FileService) Write(professionalSalaries []entities.ProfessionalSalary) 
 	}
 
 	writer := bufio.NewWriter(tempFile)
-	_, err = writer.WriteString(builder.String())
-	if err != nil {
-		return "", err
-	}
+	writer.WriteString(builder.String())
 
-	err = writer.Flush()
-	if err != nil {
-		return "", err
-	}
+	writer.Flush()
 
 	return tempFile.Name(), nil
 }
