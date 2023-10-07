@@ -88,7 +88,7 @@ func (m *FileService) Read(filePath string) ([]entities.ProfessionalSalary, erro
 	file, _ := os.Open(filePath)
 	defer file.Close()
 
-	r := csv.NewReader(bufio.NewReaderSize(file, 64*2*1024))
+	r := csv.NewReader(bufio.NewReaderSize(file, 64*512))
 
 	_, _ = r.Read()
 
