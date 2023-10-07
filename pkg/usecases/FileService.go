@@ -9,7 +9,7 @@ import (
 	"log"
 	"os"
 	"strconv"
-	"sync"
+	"strings"
 	"time"
 )
 
@@ -28,12 +28,6 @@ type FileService struct {
 
 func NewFileService() *FileService {
 	return &FileService{}
-}
-
-var professionalSalaryListPool = sync.Pool{
-	New: func() interface{} {
-		return make([]entities.ProfessionalSalary, 0, 1000)
-	},
 }
 
 func (m *FileService) CreateBuckets(pathFile string) ([]string, error) {
@@ -90,9 +84,7 @@ func (m *FileService) CreateBuckets(pathFile string) ([]string, error) {
 }
 
 func (m *FileService) Read(filePath string) ([]entities.ProfessionalSalary, error) {
-	professionalSalaryList := professionalSalaryListPool.Get().([]entities.ProfessionalSalary)
-	professionalSalaryList = professionalSalaryList[:0]
-	defer professionalSalaryListPool.Put(professionalSalaryList)
+	professionalSalaryList := make([]entities.ProfessionalSalary, 0, 1000)
 
 	file, _ := os.Open(filePath)
 	defer func() {
@@ -128,24 +120,60 @@ func (m *FileService) Read(filePath string) ([]entities.ProfessionalSalary, erro
 }
 
 func (m *FileService) Write(professionalSalaries []entities.ProfessionalSalary) (string, error) {
-	tempFile, _ := os.CreateTemp("", "bucket_result_*.csv")
+	tempFile, err := os.CreateTemp("", "bucket_result_*.csv")
+	if err != nil {
+		return "", err
+	}
 	defer tempFile.Close()
 
-	writer := bufio.NewWriter(tempFile)
+	var builder strings.Builder
 
-	_, _ = writer.WriteString("Rating;CompanyName;JobTitle;Salary;Reports;Location\n")
+	builder.WriteString("Rating;CompanyName;JobTitle;Salary;Reports;Location\n")
 
 	for _, salary := range professionalSalaries {
-		_, _ = fmt.Fprintf(writer, "%f;%s;%s;%f;%d;%s\n",
-			salary.Rating,
-			salary.CompanyName,
-			salary.JobTitle,
-			salary.Salary,
-			salary.Reports,
-			salary.Location)
+		builder.WriteString(
+			strconv.FormatFloat(salary.Rating, 'f', 6, 64) + ";" +
+				salary.CompanyName + ";" +
+				salary.JobTitle + ";" +
+				strconv.FormatFloat(salary.Salary, 'f', 6, 64) + ";" +
+				strconv.Itoa(salary.Reports) + ";" +
+				salary.Location + "\n",
+		)
 	}
 
-	_ = writer.Flush()
+	writer := bufio.NewWriter(tempFile)
+	_, err = writer.WriteString(builder.String())
+	if err != nil {
+		return "", err
+	}
+
+	err = writer.Flush()
+	if err != nil {
+		return "", err
+	}
 
 	return tempFile.Name(), nil
 }
+
+//func (m *FileService) Write(professionalSalaries []entities.ProfessionalSalary) (string, error) {
+//	tempFile, _ := os.CreateTemp("", "bucket_result_*.csv")
+//	defer tempFile.Close()
+//
+//	writer := bufio.NewWriter(tempFile)
+//
+//	_, _ = writer.WriteString("Rating;CompanyName;JobTitle;Salary;Reports;Location\n")
+//
+//	for _, salary := range professionalSalaries {
+//		_, _ = fmt.Fprintf(writer, "%f;%s;%s;%f;%d;%s\n",
+//			salary.Rating,
+//			salary.CompanyName,
+//			salary.JobTitle,
+//			salary.Salary,
+//			salary.Reports,
+//			salary.Location)
+//	}
+//
+//	_ = writer.Flush()
+//
+//	return tempFile.Name(), nil
+//}
