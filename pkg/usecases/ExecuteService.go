@@ -56,6 +56,7 @@ func deleteFile(path string) error {
 
 func (es *ExecuteService) Execute() entities.ExecutionResult {
 	runtime.GOMAXPROCS(UsedThread)
+	IsValid = true
 	var wg sync.WaitGroup
 
 	tempFiles, _ := es.FileService.CreateBuckets(filePath)
