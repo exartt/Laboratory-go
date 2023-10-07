@@ -102,8 +102,6 @@ func (es *ExecuteService) Execute() entities.ExecutionResult {
 	}
 }
 
-var ioSemaphore = make(chan struct{}, 20)
-
 func (es *ExecuteService) processFile(wg *sync.WaitGroup, tempFile string,
 	processedFiles chan string,
 	memoryUsed chan int64,
@@ -114,15 +112,9 @@ func (es *ExecuteService) processFile(wg *sync.WaitGroup, tempFile string,
 
 	initialMemory := getMemoryNow()
 
-	ioSemaphore <- struct{}{}
-
 	getTime := time.Now()
 	professionalSalaries, _ := es.FileService.Read(tempFile)
 	executionTimeR <- time.Now().Sub(getTime).Milliseconds()
-
-	<-ioSemaphore
-
-	memoryUsed <- getUsedMemory(initialMemory)
 
 	for i := range professionalSalaries {
 		titleHash, _ := es.MappingService.GetHash(professionalSalaries[i].JobTitle, enum.TITLE)
@@ -130,19 +122,15 @@ func (es *ExecuteService) processFile(wg *sync.WaitGroup, tempFile string,
 		professionalSalaries[i].JobTitle = strconv.Itoa(titleHash)
 		professionalSalaries[i].Location = strconv.Itoa(locationHash)
 	}
-
 	memoryUsed <- getUsedMemory(initialMemory)
-
-	ioSemaphore <- struct{}{}
 
 	getTime = time.Now()
 	result, _ := es.FileService.Write(professionalSalaries)
+
 	executionTimeW <- time.Now().Sub(getTime).Milliseconds()
 
-	<-ioSemaphore
-
-	memoryUsed <- getUsedMemory(initialMemory)
 	processedFiles <- result
+	memoryUsed <- getUsedMemory(initialMemory)
 
 	deleteFile(tempFile)
 }
