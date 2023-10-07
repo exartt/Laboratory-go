@@ -3,6 +3,7 @@ package usecases
 import (
 	"Laboratory-go/pkg/entities"
 	"Laboratory-go/pkg/usecases/enum"
+	"Laboratory-go/pkg/utils"
 	"os"
 	"runtime"
 	"strconv"
@@ -11,6 +12,7 @@ import (
 )
 
 var UsedThread = 1
+var IsValid = true
 
 const (
 	//filePath = "resources/Software_Professional_Salaries.csv"
@@ -52,8 +54,8 @@ func deleteFile(path string) error {
 }
 
 func (es *ExecuteService) Execute() entities.ExecutionResult {
-	var wg sync.WaitGroup
 	runtime.GOMAXPROCS(UsedThread)
+	var wg sync.WaitGroup
 
 	tempFiles, _ := es.FileService.CreateBuckets(filePath)
 	processedFiles := make(chan string, 23)
@@ -126,9 +128,11 @@ func (es *ExecuteService) processFile(wg *sync.WaitGroup, tempFile string,
 
 	getTime = time.Now()
 	result, _ := es.FileService.Write(professionalSalaries)
-
 	executionTimeW <- time.Now().Sub(getTime).Milliseconds()
 
+	if utils.HasThousandLines(result, len(professionalSalaries)+1) {
+		IsValid = false
+	}
 	processedFiles <- result
 	memoryUsed <- getUsedMemory(initialMemory)
 
