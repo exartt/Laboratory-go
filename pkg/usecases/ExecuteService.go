@@ -131,7 +131,7 @@ func (es *ExecuteService) processFile(wg *sync.WaitGroup, tempFile string,
 	result, _ := es.FileService.Write(professionalSalaries)
 	executionTimeW <- time.Now().Sub(getTime).Milliseconds()
 
-	if hasThousandLines(result, len(professionalSalaries)+1) {
+	if !hasThousandLines(result, len(professionalSalaries)+1) {
 		IsValid = false
 	}
 	processedFiles <- result
