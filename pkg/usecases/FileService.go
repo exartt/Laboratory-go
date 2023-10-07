@@ -85,37 +85,19 @@ func (m *FileService) CreateBuckets(pathFile string) ([]string, error) {
 func (m *FileService) Read(filePath string) ([]entities.ProfessionalSalary, error) {
 	professionalSalaryList := make([]entities.ProfessionalSalary, 0, MaxRows)
 
-	file, err := os.Open(filePath)
-	if err != nil {
-		return nil, err
-	}
+	file, _ := os.Open(filePath)
 	defer file.Close()
 
 	r := csv.NewReader(bufio.NewReaderSize(file, 64*1024))
 
-	_, err = r.Read()
-	if err != nil {
-		return nil, err
-	}
+	_, _ = r.Read()
 
-	records, err := r.ReadAll()
-	if err != nil {
-		return nil, err
-	}
+	records, _ := r.ReadAll()
 
 	for _, record := range records {
-		rating, err := strconv.ParseFloat(record[0], 64)
-		if err != nil {
-			return nil, err
-		}
-		salary, err := strconv.ParseFloat(record[3], 64)
-		if err != nil {
-			return nil, err
-		}
-		reports, err := strconv.Atoi(record[4])
-		if err != nil {
-			return nil, err
-		}
+		rating, _ := strconv.ParseFloat(record[0], 64)
+		salary, _ := strconv.ParseFloat(record[3], 64)
+		reports, _ := strconv.Atoi(record[4])
 
 		professionalSalaryList = append(professionalSalaryList, entities.ProfessionalSalary{
 			Rating:      rating,
@@ -156,26 +138,3 @@ func (m *FileService) Write(professionalSalaries []entities.ProfessionalSalary) 
 
 	return tempFile.Name(), nil
 }
-
-//func (m *FileService) Write(professionalSalaries []entities.ProfessionalSalary) (string, error) {
-//	tempFile, _ := os.CreateTemp("", "bucket_result_*.csv")
-//	defer tempFile.Close()
-//
-//	writer := bufio.NewWriter(tempFile)
-//
-//	_, _ = writer.WriteString("Rating;CompanyName;JobTitle;Salary;Reports;Location\n")
-//
-//	for _, salary := range professionalSalaries {
-//		_, _ = fmt.Fprintf(writer, "%f;%s;%s;%f;%d;%s\n",
-//			salary.Rating,
-//			salary.CompanyName,
-//			salary.JobTitle,
-//			salary.Salary,
-//			salary.Reports,
-//			salary.Location)
-//	}
-//
-//	_ = writer.Flush()
-//
-//	return tempFile.Name(), nil
-//}
