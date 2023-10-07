@@ -26,13 +26,13 @@ func Insert(data entities.DataCollected) {
 	var sqlStr string
 	if data.IsSingleThread {
 		sqlStr = InsertSqlOt
-		_, err := db.Exec(sqlStr, UsedThread, data.Memory, data.ExeR, data.ExeW, data.ExecutionTime, data.IdleThreadTimeMedian, data.FullExecutionTime, IsValid)
+		_, err := db.Exec(sqlStr, UsedThread, data.Memory, data.ExeR, data.ExeW, data.ExecutionTime, data.IdleThreadTimeMedian, data.FullExecutionTime, data.IsValid)
 		if err != nil {
 			log.Fatal(err)
 		}
 	} else {
 		sqlStr = InsertSql
-		_, err := db.Exec(sqlStr, UsedThread, data.Memory, data.ExeR, data.ExeW, data.Speedup, data.Efficiency, data.ExecutionTime, data.OverHead, data.IdleThreadTimeMedian, data.FullExecutionTime, IsValid)
+		_, err := db.Exec(sqlStr, UsedThread, data.Memory, data.ExeR, data.ExeW, data.Speedup, data.Efficiency, data.ExecutionTime, data.OverHead, data.IdleThreadTimeMedian, data.FullExecutionTime, data.IsValid)
 		if err != nil {
 			log.Fatal(err)
 		}

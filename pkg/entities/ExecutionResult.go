@@ -6,4 +6,5 @@ type ExecutionResult struct {
 	ExecutionTimeW chan int64
 	IdleTimes      chan int64
 	ExecutionTime  int64
+	IsValid        chan bool
 }

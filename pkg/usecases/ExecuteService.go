@@ -13,7 +13,6 @@ import (
 )
 
 var UsedThread = 1
-var IsValid = true
 
 const (
 	filePath = "resources/Software_Professional_Salaries.csv"
@@ -56,7 +55,6 @@ func deleteFile(path string) error {
 
 func (es *ExecuteService) Execute() entities.ExecutionResult {
 	runtime.GOMAXPROCS(UsedThread)
-	IsValid = true
 	var wg sync.WaitGroup
 
 	tempFiles, _ := es.FileService.CreateBuckets(filePath)
@@ -66,6 +64,9 @@ func (es *ExecuteService) Execute() entities.ExecutionResult {
 	executionTimeW := make(chan int64, 23)
 	idleTimes := make(chan int64, 23)
 	tempFilesChan := make(chan string, len(tempFiles))
+	isValid := make(chan bool, 1)
+
+	isValid <- true
 
 	for _, path := range tempFiles {
 		tempFilesChan <- path
@@ -81,7 +82,7 @@ func (es *ExecuteService) Execute() entities.ExecutionResult {
 
 		wg.Add(1)
 		go func(file string) {
-			es.processFile(&wg, file, processedFiles, memoryUsed, executionTimeR, executionTimeW)
+			es.processFile(&wg, file, processedFiles, memoryUsed, executionTimeR, executionTimeW, isValid)
 		}(tempFile)
 	}
 	wg.Wait()
@@ -92,6 +93,7 @@ func (es *ExecuteService) Execute() entities.ExecutionResult {
 	close(executionTimeW)
 	close(idleTimes)
 	close(processedFiles)
+	close(isValid)
 
 	for path := range processedFiles {
 		deleteFile(path)
@@ -103,14 +105,16 @@ func (es *ExecuteService) Execute() entities.ExecutionResult {
 		ExecutionTime:  executionTime,
 		ExecutionTimeR: executionTimeR,
 		ExecutionTimeW: executionTimeW,
+		IsValid:        isValid,
 	}
 }
 
 func (es *ExecuteService) processFile(wg *sync.WaitGroup, tempFile string,
 	processedFiles chan string,
-	memoryUsed chan int64,
-	executionTimeR chan int64,
-	executionTimeW chan int64) {
+	memoryUsed,
+	executionTimeR,
+	executionTimeW chan int64,
+	isValid chan bool) {
 
 	defer wg.Done()
 
@@ -133,7 +137,7 @@ func (es *ExecuteService) processFile(wg *sync.WaitGroup, tempFile string,
 	executionTimeW <- time.Now().Sub(getTime).Milliseconds()
 
 	if !hasThousandLines(result, len(professionalSalaries)+1) {
-		IsValid = false
+		isValid <- false
 	}
 	processedFiles <- result
 	memoryUsed <- getUsedMemory(initialMemory)

@@ -11,4 +11,5 @@ type DataCollected struct {
 	IdleThreadTimeMedian int64
 	IsSingleThread       bool
 	FullExecutionTime    int64
+	IsValid              bool
 }
