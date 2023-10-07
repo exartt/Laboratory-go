@@ -9,6 +9,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -23,6 +24,7 @@ type IFileService interface {
 }
 
 type FileService struct {
+	mu sync.Mutex
 }
 
 func NewFileService() *FileService {
@@ -83,6 +85,8 @@ func (m *FileService) CreateBuckets(pathFile string) ([]string, error) {
 }
 
 func (m *FileService) Read(filePath string) ([]entities.ProfessionalSalary, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	professionalSalaryList := make([]entities.ProfessionalSalary, 0, MaxRows)
 
 	file, _ := os.Open(filePath)
@@ -113,6 +117,8 @@ func (m *FileService) Read(filePath string) ([]entities.ProfessionalSalary, erro
 }
 
 func (m *FileService) Write(professionalSalaries []entities.ProfessionalSalary) (string, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	tempFile, _ := os.CreateTemp("", "bucket_result_*.csv")
 	defer tempFile.Close()
 

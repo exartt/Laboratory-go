@@ -53,7 +53,7 @@ func deleteFile(path string) error {
 
 func (es *ExecuteService) Execute() entities.ExecutionResult {
 	var wg sync.WaitGroup
-	runtime.GOMAXPROCS(16)
+	runtime.GOMAXPROCS(8)
 
 	tempFiles, _ := es.FileService.CreateBuckets(filePath)
 	processedFiles := make(chan string, 23)
