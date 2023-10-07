@@ -12,6 +12,9 @@ func main() {
 	fileService := usecases.NewFileService()
 	mappingService := usecases.NewMappingService()
 
+	usecases.DeleteFromGData()
+	usecases.DeleteFromGDataOT()
+
 	const repeatProcess = 50
 	for numGoRoutines := 1; numGoRoutines <= 4; numGoRoutines++ {
 		fmt.Printf(" ============ ALLOWED GO ROUTINES: %d ============\n", numGoRoutines)

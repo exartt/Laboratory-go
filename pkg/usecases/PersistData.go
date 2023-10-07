@@ -72,3 +72,33 @@ func InsertData(sequentialTime float64, usedThread int) {
 		log.Fatal(err)
 	}
 }
+
+func DeleteFromGData() {
+	db := repository.Connect()
+	defer func(db *sql.DB) {
+		err := db.Close()
+		if err != nil {
+			log.Fatal(err)
+		}
+	}(db)
+
+	_, err := db.Exec("DELETE FROM g_data")
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		log.Fatal(err)
+	}
+}
+
+func DeleteFromGDataOT() {
+	db := repository.Connect()
+	defer func(db *sql.DB) {
+		err := db.Close()
+		if err != nil {
+			log.Fatal(err)
+		}
+	}(db)
+
+	_, err := db.Exec("DELETE FROM g_data_ot")
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		log.Fatal(err)
+	}
+}
