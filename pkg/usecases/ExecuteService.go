@@ -14,6 +14,7 @@ import (
 var UsedThread = 1
 
 const (
+	//filePath = "resources/Software_Professional_Salaries.csv"
 	filePath = "/home/opc/Laboratory-go/resources/Software_Professional_Salaries.csv"
 )
 
@@ -89,12 +90,12 @@ func (es *ExecuteService) Execute() entities.ExecutionResult {
 	close(idleTimes)
 	close(processedFiles)
 
-	for path := range processedFiles {
-		err := deleteFile(path)
-		if err != nil {
-			log.Print(err)
-		}
-	}
+	//for path := range processedFiles {
+	//	err := deleteFile(path)
+	//	if err != nil {
+	//		log.Print(err)
+	//	}
+	//}
 
 	return entities.ExecutionResult{
 		MemoryUsed:     memoryUsed,

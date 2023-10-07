@@ -12,7 +12,7 @@ func main() {
 	fileService := usecases.NewFileService()
 	mappingService := usecases.NewMappingService()
 
-	const repeatProcess = 15000
+	const repeatProcess = 50
 	for numGoRoutines := 1; numGoRoutines <= 4; numGoRoutines++ {
 		fmt.Printf(" ============ ALLOWED GO ROUTINES: %d ============\n", numGoRoutines)
 		typeThread := "singleThread"

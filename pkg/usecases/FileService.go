@@ -90,26 +90,24 @@ func (m *FileService) Read(filePath string) ([]entities.ProfessionalSalary, erro
 		return nil, fmt.Errorf("could not open file: %v", err)
 	}
 	defer func() {
-		err := file.Close()
-		if err != nil {
-			log.Printf("Failed to close file during reading: %v", err)
+		if cerr := file.Close(); cerr != nil {
+			log.Printf("Failed to close file during reading: %v", cerr)
 		}
 	}()
 
-	bufferedReader := bufio.NewReader(file)
+	bufferedReader := bufio.NewReaderSize(file, 64*1024)
 	reader := csv.NewReader(bufferedReader)
 
-	_, err = reader.Read()
-	if err != nil {
+	if _, err := reader.Read(); err != nil {
 		return nil, fmt.Errorf("error reading header: %v", err)
 	}
 
 	for {
 		line, err := reader.Read()
+		if err == io.EOF {
+			break
+		}
 		if err != nil {
-			if err == io.EOF {
-				break
-			}
 			return nil, fmt.Errorf("error reading line: %v", err)
 		}
 
@@ -117,31 +115,23 @@ func (m *FileService) Read(filePath string) ([]entities.ProfessionalSalary, erro
 		if err != nil {
 			return nil, fmt.Errorf("could not parse rating: %v", err)
 		}
-
-		companyName := line[1]
-		jobTitle := line[2]
-
 		salary, err := strconv.ParseFloat(line[3], 64)
 		if err != nil {
 			return nil, fmt.Errorf("could not parse salary: %v", err)
 		}
-
 		reports, err := strconv.Atoi(line[4])
 		if err != nil {
 			return nil, fmt.Errorf("could not parse reports: %v", err)
 		}
 
-		location := line[5]
-
 		professionalSalary := entities.ProfessionalSalary{
 			Rating:      rating,
-			CompanyName: companyName,
-			JobTitle:    jobTitle,
+			CompanyName: line[1],
+			JobTitle:    line[2],
 			Salary:      salary,
 			Reports:     reports,
-			Location:    location,
+			Location:    line[5],
 		}
-
 		professionalSalaryList = append(professionalSalaryList, professionalSalary)
 	}
 
