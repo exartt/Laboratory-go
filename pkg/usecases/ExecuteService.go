@@ -102,7 +102,7 @@ func (es *ExecuteService) Execute() entities.ExecutionResult {
 	}
 }
 
-var ioSemaphore = make(chan struct{}, 15)
+var ioSemaphore = make(chan struct{}, 25)
 
 func (es *ExecuteService) processFile(wg *sync.WaitGroup, tempFile string,
 	processedFiles chan string,
