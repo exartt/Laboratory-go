@@ -9,6 +9,7 @@ import (
 	"runtime"
 	"strconv"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -65,6 +66,7 @@ func (es *ExecuteService) Execute() entities.ExecutionResult {
 	idleTimes := make(chan int64, 23)
 	tempFilesChan := make(chan string, len(tempFiles))
 	isValid := make(chan bool, 1)
+	var lastEndTime int64
 
 	isValid <- true
 
@@ -75,25 +77,25 @@ func (es *ExecuteService) Execute() entities.ExecutionResult {
 
 	startTime := time.Now()
 	for _, tempFile := range tempFiles {
-		waitStart := time.Now()
-		waitEnd := time.Now()
-		waitTime := waitEnd.Sub(waitStart).Milliseconds()
+		waitTime := time.Now().Sub(time.Unix(0, atomic.LoadInt64(&lastEndTime))).Milliseconds()
 		idleTimes <- waitTime
 
 		wg.Add(1)
 		go func(file string) {
 			es.processFile(&wg, file, processedFiles, memoryUsed, executionTimeR, executionTimeW, isValid)
+			atomic.StoreInt64(&lastEndTime, time.Now().UnixNano())
 		}(tempFile)
 	}
-	wg.Wait()
 
-	executionTime := time.Since(startTime).Milliseconds()
+	wg.Wait()
 	close(memoryUsed)
 	close(executionTimeR)
 	close(executionTimeW)
 	close(idleTimes)
 	close(processedFiles)
 	close(isValid)
+
+	executionTime := time.Since(startTime).Milliseconds()
 
 	for path := range processedFiles {
 		deleteFile(path)
