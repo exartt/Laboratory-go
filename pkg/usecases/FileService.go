@@ -5,6 +5,7 @@ import (
 	"bufio"
 	"encoding/csv"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"strconv"
@@ -19,7 +20,7 @@ const (
 type IFileService interface {
 	CreateBuckets(pathFile string) ([]string, error)
 	Read(filePath string) ([]entities.ProfessionalSalary, error)
-	Write(data []entities.ProfessionalSalary) (string, error)
+	Write(data []entities.ProfessionalSalary, builder *strings.Builder) (string, error)
 }
 
 type FileService struct {
@@ -88,13 +89,17 @@ func (m *FileService) Read(filePath string) ([]entities.ProfessionalSalary, erro
 	file, _ := os.Open(filePath)
 	defer file.Close()
 
-	r := csv.NewReader(bufio.NewReaderSize(file, 64*512))
+	reader := bufio.NewReader(file)
+	csvReader := csv.NewReader(reader)
 
-	_, _ = r.Read()
+	_, _ = csvReader.Read()
 
-	records, _ := r.ReadAll()
+	for {
+		record, err := csvReader.Read()
+		if err == io.EOF {
+			break
+		}
 
-	for _, record := range records {
 		rating, _ := strconv.ParseFloat(record[0], 64)
 		salary, _ := strconv.ParseFloat(record[3], 64)
 		reports, _ := strconv.Atoi(record[4])
@@ -112,11 +117,14 @@ func (m *FileService) Read(filePath string) ([]entities.ProfessionalSalary, erro
 	return professionalSalaryList, nil
 }
 
-func (m *FileService) Write(professionalSalaries []entities.ProfessionalSalary) (string, error) {
-	tempFile, _ := os.CreateTemp("", "bucket_result_*.csv")
+func (m *FileService) Write(professionalSalaries []entities.ProfessionalSalary, builder *strings.Builder) (string, error) {
+	tempFile, err := os.CreateTemp("", "bucket_result_*.csv")
+	if err != nil {
+		return "", err
+	}
 	defer tempFile.Close()
 
-	var builder strings.Builder
+	writer := bufio.NewWriter(tempFile)
 
 	builder.WriteString("Rating;CompanyName;JobTitle;Salary;Reports;Location\n")
 
@@ -131,10 +139,15 @@ func (m *FileService) Write(professionalSalaries []entities.ProfessionalSalary) 
 		)
 	}
 
-	writer := bufio.NewWriter(tempFile)
-	writer.WriteString(builder.String())
+	_, err = writer.WriteString(builder.String())
+	if err != nil {
+		return "", err
+	}
 
-	writer.Flush()
+	err = writer.Flush()
+	if err != nil {
+		return "", err
+	}
 
 	return tempFile.Name(), nil
 }
