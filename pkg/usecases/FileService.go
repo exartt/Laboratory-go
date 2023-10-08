@@ -20,8 +20,7 @@ const (
 type IFileService interface {
 	CreateBuckets(pathFile string) ([]string, error)
 	Read(filePath string) ([]entities.ProfessionalSalary, error)
-	WritePool(data []entities.ProfessionalSalary, builder *strings.Builder) (string, error)
-	Write(data []entities.ProfessionalSalary) (string, error)
+	Write(data []entities.ProfessionalSalary, builder *strings.Builder) (string, error)
 }
 
 type FileService struct {
@@ -118,34 +117,7 @@ func (m *FileService) Read(filePath string) ([]entities.ProfessionalSalary, erro
 	return professionalSalaryList, nil
 }
 
-func (m *FileService) Write(professionalSalaries []entities.ProfessionalSalary) (string, error) {
-	tempFile, _ := os.CreateTemp("", "bucket_result_*.csv")
-	defer tempFile.Close()
-
-	var builder strings.Builder
-
-	builder.WriteString("Rating;CompanyName;JobTitle;Salary;Reports;Location\n")
-
-	for _, salary := range professionalSalaries {
-		builder.WriteString(
-			strconv.FormatFloat(salary.Rating, 'f', 6, 64) + ";" +
-				salary.CompanyName + ";" +
-				salary.JobTitle + ";" +
-				strconv.FormatFloat(salary.Salary, 'f', 6, 64) + ";" +
-				strconv.Itoa(salary.Reports) + ";" +
-				salary.Location + "\n",
-		)
-	}
-
-	writer := bufio.NewWriter(tempFile)
-	writer.WriteString(builder.String())
-
-	writer.Flush()
-
-	return tempFile.Name(), nil
-}
-
-func (m *FileService) WritePool(professionalSalaries []entities.ProfessionalSalary, builder *strings.Builder) (string, error) {
+func (m *FileService) Write(professionalSalaries []entities.ProfessionalSalary, builder *strings.Builder) (string, error) {
 	tempFile, err := os.CreateTemp("", "bucket_result_*.csv")
 	if err != nil {
 		return "", err
