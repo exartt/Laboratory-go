@@ -8,7 +8,6 @@ import (
 	"os"
 	"runtime"
 	"strconv"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -37,11 +36,11 @@ func NewExecuteService(fileService IFileService, mappingService IMappingService)
 	}
 }
 
-var pool = &sync.Pool{
-	New: func() interface{} {
-		return new(strings.Builder)
-	},
-}
+//var pool = &sync.Pool{
+//	New: func() interface{} {
+//		return new(strings.Builder)
+//	},
+//}
 
 func getMemoryNow() uint64 {
 	var memStats runtime.MemStats
@@ -129,9 +128,9 @@ func (es *ExecuteService) processFile(wg *sync.WaitGroup, tempFile string,
 
 	initialMemory := getMemoryNow()
 
-	builder := pool.Get().(*strings.Builder)
-	defer pool.Put(builder)
-	builder.Reset()
+	//builder := pool.Get().(*strings.Builder)
+	//defer pool.Put(builder)
+	//builder.Reset()
 
 	getTime := time.Now()
 	professionalSalaries, _ := es.FileService.Read(tempFile)
@@ -146,7 +145,8 @@ func (es *ExecuteService) processFile(wg *sync.WaitGroup, tempFile string,
 	memoryUsed <- getUsedMemory(initialMemory)
 
 	getTime = time.Now()
-	result, _ := es.FileService.Write(professionalSalaries, builder)
+	//result, _ := es.FileService.WritePool(professionalSalaries, builder)
+	result, _ := es.FileService.Write(professionalSalaries)
 	executionTimeW <- time.Now().Sub(getTime).Milliseconds()
 
 	if !hasThousandLines(result, len(professionalSalaries)+1) {
