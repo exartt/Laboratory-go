@@ -15,8 +15,8 @@ import (
 var UsedThread = 1
 
 const (
-	filePath = "resources/Software_Professional_Salaries.csv"
-	//filePath = "/home/opc/Laboratory-go/resources/Software_Professional_Salaries.csv"
+	//filePath = "resources/Software_Professional_Salaries.csv"
+	filePath = "/home/opc/Laboratory-go/resources/Software_Professional_Salaries.csv"
 )
 
 type IExecuteService interface {
