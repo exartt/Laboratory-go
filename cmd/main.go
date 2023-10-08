@@ -15,7 +15,7 @@ func main() {
 	usecases.DeleteFromGData()
 	usecases.DeleteFromGDataOT()
 
-	const repeatProcess = 15000
+	const repeatProcess = 10
 	for numGoRoutines := 1; numGoRoutines <= 4; numGoRoutines++ {
 		fmt.Printf(" ============ ALLOWED GO ROUTINES: %d ============\n", numGoRoutines)
 		typeThread := "singleThread"

@@ -95,6 +95,7 @@ func ExecuteAndCollectData(executeService *usecases.ExecuteService, threadType s
 		executionTimeW := sumAll(result.ExecutionTimeW)
 		idleThreadTime := CalculateAverageIdleTimeInMilliseconds(result.IdleTimes)
 		timeSpent := (time.Now().UnixNano() / int64(time.Millisecond)) - currentTimeMillis
+
 		valid := true
 		for isValid := range result.IsValid {
 			valid = isValid

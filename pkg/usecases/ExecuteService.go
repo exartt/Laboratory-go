@@ -15,8 +15,8 @@ import (
 var UsedThread = 1
 
 const (
-	//filePath = "resources/Software_Professional_Salaries.csv"
-	filePath = "/home/opc/Laboratory-go/resources/Software_Professional_Salaries.csv"
+	filePath = "resources/Software_Professional_Salaries.csv"
+	//filePath = "/home/opc/Laboratory-go/resources/Software_Professional_Salaries.csv"
 )
 
 type IExecuteService interface {
@@ -58,7 +58,7 @@ func (es *ExecuteService) Execute() entities.ExecutionResult {
 	var wg sync.WaitGroup
 
 	tempFiles, _ := es.FileService.CreateBuckets(filePath)
-	processedFiles := make(chan string, 23)
+	processedFiles := make(chan ProcessedFile, 23)
 	memoryUsed := make(chan int64, 69)
 	executionTimeR := make(chan int64, 23)
 	executionTimeW := make(chan int64, 23)
@@ -80,7 +80,6 @@ func (es *ExecuteService) Execute() entities.ExecutionResult {
 		waitTime := waitEnd.Sub(waitStart).Milliseconds()
 		idleTimes <- waitTime
 
-		wg.Add(1)
 		go func(file string) {
 			es.processFile(&wg, file, processedFiles, memoryUsed, executionTimeR, executionTimeW, isValid)
 		}(tempFile)
@@ -96,7 +95,10 @@ func (es *ExecuteService) Execute() entities.ExecutionResult {
 	close(isValid)
 
 	for path := range processedFiles {
-		deleteFile(path)
+		if !hasThousandLines(path.FileName, path.FileSize) {
+			isValid <- false
+		}
+		deleteFile(path.FileName)
 	}
 
 	return entities.ExecutionResult{
@@ -110,7 +112,7 @@ func (es *ExecuteService) Execute() entities.ExecutionResult {
 }
 
 func (es *ExecuteService) processFile(wg *sync.WaitGroup, tempFile string,
-	processedFiles chan string,
+	processedFiles chan ProcessedFile,
 	memoryUsed,
 	executionTimeR,
 	executionTimeW chan int64,
@@ -118,31 +120,82 @@ func (es *ExecuteService) processFile(wg *sync.WaitGroup, tempFile string,
 
 	defer wg.Done()
 
+	var wgInside sync.WaitGroup
+	wgInside.Add(3)
+
 	initialMemory := getMemoryNow()
 
-	getTime := time.Now()
-	professionalSalaries, _ := es.FileService.Read(tempFile)
-	executionTimeR <- time.Now().Sub(getTime).Milliseconds()
+	readChan := make(chan string, 22)
+	processChan := make(chan []entities.ProfessionalSalary, 22)
+	writeChan := make(chan []entities.ProfessionalSalary, 22)
 
-	for i := range professionalSalaries {
-		titleHash, _ := es.MappingService.GetHash(professionalSalaries[i].JobTitle, enum.TITLE)
-		locationHash, _ := es.MappingService.GetHash(professionalSalaries[i].Location, enum.LOCATION)
-		professionalSalaries[i].JobTitle = strconv.Itoa(titleHash)
-		professionalSalaries[i].Location = strconv.Itoa(locationHash)
-	}
-	memoryUsed <- getUsedMemory(initialMemory)
+	go es.reader(readChan, processChan, wg, executionTimeR, memoryUsed, initialMemory)
+	go es.processor(processChan, writeChan, wg, memoryUsed)
+	go es.writer(writeChan, wg, executionTimeW, memoryUsed, processedFiles, isValid)
 
-	getTime = time.Now()
-	result, _ := es.FileService.Write(professionalSalaries)
-	executionTimeW <- time.Now().Sub(getTime).Milliseconds()
+	readChan <- tempFile
+	close(readChan)
 
-	if !hasThousandLines(result, len(professionalSalaries)+1) {
-		isValid <- false
-	}
-	processedFiles <- result
+	wgInside.Wait()
+	close(processChan)
+	close(writeChan)
+
 	memoryUsed <- getUsedMemory(initialMemory)
 
 	deleteFile(tempFile)
+}
+
+func (es *ExecuteService) reader(in chan string, out chan []entities.ProfessionalSalary, wg *sync.WaitGroup, executionTimeR, memoryUsed chan int64, initialMemory uint64) {
+	getTime := time.Now()
+	for file := range in {
+		data, _ := es.FileService.Read(file)
+		out <- data
+	}
+	close(out)
+	wg.Done()
+	executionTimeR <- time.Now().Sub(getTime).Milliseconds()
+	memoryUsed <- getUsedMemory(initialMemory)
+}
+
+type ProcessedFile struct {
+	FileName string
+	FileSize int
+}
+
+func (es *ExecuteService) processor(in chan []entities.ProfessionalSalary, out chan []entities.ProfessionalSalary, wg *sync.WaitGroup, memoryUsed chan int64) {
+	for data := range in {
+		for i := range data {
+			titleHash, _ := es.MappingService.GetHash(data[i].JobTitle, enum.TITLE)
+			locationHash, _ := es.MappingService.GetHash(data[i].Location, enum.LOCATION)
+			data[i].JobTitle = strconv.Itoa(titleHash)
+			data[i].Location = strconv.Itoa(locationHash)
+		}
+		out <- data
+	}
+	close(out)
+	wg.Done()
+}
+
+func (es *ExecuteService) writer(
+	in chan []entities.ProfessionalSalary,
+	wg *sync.WaitGroup,
+	executionTimeW, memoryUsed chan int64,
+	processedFiles chan ProcessedFile,
+	isValid chan bool) {
+
+	defer wg.Done()
+	initialMemory := getMemoryNow()
+	for data := range in {
+		getTime := time.Now()
+		result, _ := es.FileService.Write(data)
+		executionTimeW <- time.Now().Sub(getTime).Milliseconds()
+		memoryUsed <- getUsedMemory(initialMemory)
+
+		if !hasThousandLines(result, len(data)+1) {
+			isValid <- false
+		}
+		processedFiles <- ProcessedFile{FileName: result, FileSize: len(data)}
+	}
 }
 
 func hasThousandLines(filePath string, size int) bool {
