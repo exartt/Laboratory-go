@@ -89,7 +89,7 @@ func (es *ExecuteService) Execute() entities.ExecutionResult {
 
 		wg.Add(1)
 		go func(file string) {
-			es.processFile(&wg, file, processedFiles, memoryUsed, executionTimeR, executionTimeW, isValid)
+			processFile(&wg, file, processedFiles, memoryUsed, executionTimeR, executionTimeW, isValid, es)
 			atomic.StoreInt64(&lastEndTime, time.Now().UnixNano())
 		}(tempFile)
 	}
@@ -118,12 +118,12 @@ func (es *ExecuteService) Execute() entities.ExecutionResult {
 	}
 }
 
-func (es *ExecuteService) processFile(wg *sync.WaitGroup, tempFile string,
+func processFile(wg *sync.WaitGroup, tempFile string,
 	processedFiles chan string,
 	memoryUsed,
 	executionTimeR,
 	executionTimeW chan int64,
-	isValid chan bool) {
+	isValid chan bool, es *ExecuteService) {
 
 	defer wg.Done()
 
