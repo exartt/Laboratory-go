@@ -62,7 +62,6 @@ func deleteFile(path string) error {
 }
 
 func (es *ExecuteService) Execute() entities.ExecutionResult {
-	runtime.GOMAXPROCS(UsedThread)
 	var wg sync.WaitGroup
 
 	tempFiles, _ := es.FileService.CreateBuckets(filePath)
@@ -73,6 +72,7 @@ func (es *ExecuteService) Execute() entities.ExecutionResult {
 	idleTimes := make(chan int64, 23)
 	tempFilesChan := make(chan string, len(tempFiles))
 	isValid := make(chan bool, 1)
+
 	var lastEndTime int64
 
 	isValid <- true
@@ -82,16 +82,25 @@ func (es *ExecuteService) Execute() entities.ExecutionResult {
 	}
 	close(tempFilesChan)
 
+	pool := &WorkerPool{
+		maxWorkers:  UsedThread,
+		queuedTasks: make(chan func(), len(tempFiles)),
+	}
+
+	pool.Run()
+
 	startTime := time.Now()
 	for _, tempFile := range tempFiles {
 		waitTime := time.Now().Sub(time.Unix(0, atomic.LoadInt64(&lastEndTime))).Milliseconds()
 		idleTimes <- waitTime
 
 		wg.Add(1)
-		go func(file string) {
-			es.processFile(&wg, file, processedFiles, memoryUsed, executionTimeR, executionTimeW, isValid)
-			atomic.StoreInt64(&lastEndTime, time.Now().UnixNano())
-		}(tempFile)
+		localFile := tempFile
+		pool.AddTask(func() {
+			defer wg.Done()
+			es.processFile(localFile, processedFiles, memoryUsed, executionTimeR, executionTimeW, isValid)
+			atomic.StoreInt64(&lastEndTime, time.Now().UnixMilli())
+		})
 	}
 
 	wg.Wait()
@@ -118,14 +127,12 @@ func (es *ExecuteService) Execute() entities.ExecutionResult {
 	}
 }
 
-func (es *ExecuteService) processFile(wg *sync.WaitGroup, tempFile string,
+func (es *ExecuteService) processFile(tempFile string,
 	processedFiles chan string,
 	memoryUsed,
 	executionTimeR,
 	executionTimeW chan int64,
 	isValid chan bool) {
-
-	defer wg.Done()
 
 	initialMemory := getMemoryNow()
 
@@ -181,4 +188,25 @@ func hasThousandLines(filePath string, size int) bool {
 	}
 
 	return lineCount == size
+}
+
+// WORKER POOL // TODO -> aplicar clean code eventualmente, realocando as funções
+
+type WorkerPool struct {
+	maxWorkers  int
+	queuedTasks chan func()
+}
+
+func (wp *WorkerPool) Run() {
+	for i := 0; i < wp.maxWorkers; i++ {
+		go func() {
+			for task := range wp.queuedTasks {
+				task()
+			}
+		}()
+	}
+}
+
+func (wp *WorkerPool) AddTask(task func()) {
+	wp.queuedTasks <- task
 }
