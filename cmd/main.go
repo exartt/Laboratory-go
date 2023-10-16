@@ -3,7 +3,6 @@ package main
 import (
 	"Laboratory-go/pkg/usecases"
 	"Laboratory-go/pkg/utils"
-	"fmt"
 	_ "net/http/pprof"
 	"runtime"
 )
@@ -15,20 +14,23 @@ func main() {
 	usecases.DeleteFromGData()
 	usecases.DeleteFromGDataOT()
 
-	const repeatProcess = 15000
-	for numGoRoutines := 1; numGoRoutines <= 4; numGoRoutines++ {
-		fmt.Printf(" ============ ALLOWED GO ROUTINES: %d ============\n", numGoRoutines)
-		typeThread := "singleThread"
-		runtime.GC()
-		if numGoRoutines > 1 {
-			utils.SetSequentialExecutionTime()
-			typeThread = "multiThread"
-		}
+	const repeatProcess = 1000
+	typeThread := "singleThread"
+	runtime.GC()
+	utils.SetUsedThread(1)
+	runtime.GOMAXPROCS(1)
+	utils.PersistDataUsed()
+	executeService := usecases.NewExecuteService(fileService, mappingService)
 
-		utils.SetUsedThread(numGoRoutines)
-		utils.PersistDataUsed()
-		executeService := usecases.NewExecuteService(fileService, mappingService)
+	utils.ExecuteAndCollectData(executeService, typeThread, repeatProcess)
 
-		utils.ExecuteAndCollectData(executeService, typeThread, repeatProcess)
-	}
+	utils.SetSequentialExecutionTime()
+	typeThread = "multiThread"
+	runtime.GC()
+	utils.SetUsedThread(1000)
+	runtime.GOMAXPROCS(runtime.NumCPU())
+	utils.PersistDataUsed()
+	executeService = usecases.NewExecuteService(fileService, mappingService)
+
+	utils.ExecuteAndCollectData(executeService, typeThread, repeatProcess)
 }

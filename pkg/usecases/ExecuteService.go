@@ -62,10 +62,19 @@ func deleteFile(path string) error {
 }
 
 func (es *ExecuteService) Execute() entities.ExecutionResult {
-	runtime.GOMAXPROCS(UsedThread)
 	var wg sync.WaitGroup
 
-	tempFiles, _ := es.FileService.CreateBuckets(filePath)
+	//tempFiles, _ := es.FileService.CreateBuckets(filePath)
+
+	var tempFiles []string
+	for i := 0; i < 100; i++ {
+		files, err := es.FileService.CreateBuckets(filePath)
+		if err != nil {
+			fmt.Println("Erro ao criar buckets:", err)
+			panic("error")
+		}
+		tempFiles = append(tempFiles, files...)
+	}
 	processedFiles := make(chan string, 23)
 	memoryUsed := make(chan int64, 69)
 	executionTimeR := make(chan int64, 23)
