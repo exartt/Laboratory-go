@@ -67,7 +67,7 @@ func (es *ExecuteService) Execute() entities.ExecutionResult {
 	//tempFiles, _ := es.FileService.CreateBuckets(filePath)
 
 	var tempFiles []string
-	for i := 0; i < 100; i++ {
+	for i := 0; i < 50; i++ {
 		files, err := es.FileService.CreateBuckets(filePath)
 		if err != nil {
 			fmt.Println("Erro ao criar buckets:", err)
@@ -75,11 +75,11 @@ func (es *ExecuteService) Execute() entities.ExecutionResult {
 		}
 		tempFiles = append(tempFiles, files...)
 	}
-	processedFiles := make(chan string, 23)
-	memoryUsed := make(chan int64, 69)
-	executionTimeR := make(chan int64, 23)
-	executionTimeW := make(chan int64, 23)
-	idleTimes := make(chan int64, 23)
+	processedFiles := make(chan string, len(tempFiles))
+	memoryUsed := make(chan int64, 3*len(tempFiles))
+	executionTimeR := make(chan int64, len(tempFiles))
+	executionTimeW := make(chan int64, len(tempFiles))
+	idleTimes := make(chan int64, len(tempFiles))
 	tempFilesChan := make(chan string, len(tempFiles))
 	isValid := make(chan bool, 1)
 	var lastEndTime int64
