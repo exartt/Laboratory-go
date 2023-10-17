@@ -64,12 +64,29 @@ func deleteFile(path string) error {
 func (es *ExecuteService) Execute() entities.ExecutionResult {
 	var wg sync.WaitGroup
 
-	tempFiles, _ := es.FileService.CreateBuckets(filePath)
-	processedFiles := make(chan string, 23)
-	memoryUsed := make(chan int64, 69)
-	executionTimeR := make(chan int64, 23)
-	executionTimeW := make(chan int64, 23)
-	idleTimes := make(chan int64, 23)
+	//tempFiles, _ := es.FileService.CreateBuckets(filePath)
+	//processedFiles := make(chan string, 23)
+	//memoryUsed := make(chan int64, 69)
+	//executionTimeR := make(chan int64, 23)
+	//executionTimeW := make(chan int64, 23)
+	//idleTimes := make(chan int64, 23)
+	//tempFilesChan := make(chan string, len(tempFiles))
+	//isValid := make(chan bool, 1)
+
+	var tempFiles []string
+	for i := 0; i < 50; i++ {
+		files, err := es.FileService.CreateBuckets(filePath)
+		if err != nil {
+			fmt.Println("Erro ao criar buckets:", err)
+			panic("error")
+		}
+		tempFiles = append(tempFiles, files...)
+	}
+	processedFiles := make(chan string, len(tempFiles))
+	memoryUsed := make(chan int64, 3*len(tempFiles))
+	executionTimeR := make(chan int64, len(tempFiles))
+	executionTimeW := make(chan int64, len(tempFiles))
+	idleTimes := make(chan int64, len(tempFiles))
 	tempFilesChan := make(chan string, len(tempFiles))
 	isValid := make(chan bool, 1)
 
